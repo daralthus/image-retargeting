@@ -141,8 +141,6 @@
 			<File
 				RelativePath="Image.h"/>
 			<File
-				RelativePath="Lab.h"/>
-			<File
 				RelativePath="Real.h"/>
 			<File
 				RelativePath="pstdint.h"/>
