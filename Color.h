@@ -7,6 +7,7 @@
 
 #include "pstdint.h"
 #include "Real.h"
+#include "MathTools.h"
 
 namespace IRL
 {
@@ -29,32 +30,20 @@ namespace IRL
     class Color
     {
         template<class T>
-        struct ValueType;
-        template<class T>
-        struct MaxValue;
+        struct Traits;
 
         // uint8_t 
         template<>
-        struct ValueType<uint8_t>
+        struct Traits<uint8_t>
         {
-            typedef uint32_t Type;
-        };
-        template<>
-        struct MaxValue<uint8_t>
-        {
-            static const int Value = UINT8_MAX;
+            static const int MaxValue = UINT8_MAX;
         };
 
         // uint16_t
         template<>
-        struct ValueType<uint16_t>
+        struct Traits<uint16_t>
         {
-            typedef uint64_t Type;
-        };
-        template<>
-        struct MaxValue<uint16_t>
-        {
-            static const int Value = UINT16_MAX;
+            static const int MaxValue = UINT16_MAX;
         };
 
     public:
@@ -81,22 +70,17 @@ namespace IRL
                 Channel R;
                 Channel A;
             };
-
-            ValueType<Channel>::Type Value;
         };
 
         Color()
         { }
 
-        Color(const Color& c) : Value(c.Value)
-        { }
-
         uint32_t ToARGB32() const
         {
-            uint8_t Rb = R / (MaxValue<Channel>::Value / UINT8_MAX);
-            uint8_t Gb = G / (MaxValue<Channel>::Value / UINT8_MAX);
-            uint8_t Bb = B / (MaxValue<Channel>::Value / UINT8_MAX);
-            uint8_t Ab = A / (MaxValue<Channel>::Value / UINT8_MAX);
+            uint8_t Rb = R / (Traits<Channel>::MaxValue / UINT8_MAX);
+            uint8_t Gb = G / (Traits<Channel>::MaxValue / UINT8_MAX);
+            uint8_t Bb = B / (Traits<Channel>::MaxValue / UINT8_MAX);
+            uint8_t Ab = A / (Traits<Channel>::MaxValue / UINT8_MAX);
             return (Ab << 24) | (Rb << 16) | (Gb << 8) | Bb;
         }
 
@@ -108,10 +92,10 @@ namespace IRL
             int Ab = (color & 0xff000000) >> 24;
 
             Color result;
-            result.R = Rb * (MaxValue<Channel>::Value / UINT8_MAX);
-            result.G = Gb * (MaxValue<Channel>::Value / UINT8_MAX);
-            result.B = Bb * (MaxValue<Channel>::Value / UINT8_MAX);
-            result.A = Ab * (MaxValue<Channel>::Value / UINT8_MAX);
+            result.R = Rb * (Traits<Channel>::MaxValue / UINT8_MAX);
+            result.G = Gb * (Traits<Channel>::MaxValue / UINT8_MAX);
+            result.B = Bb * (Traits<Channel>::MaxValue / UINT8_MAX);
+            result.A = Ab * (Traits<Channel>::MaxValue / UINT8_MAX);
             return result;
         }
 
@@ -177,6 +161,27 @@ namespace IRL
             return result;
         }
 
+        static uint32_t Distance(const Color& c1, const Color& c2)
+        {
+            const int MaxValueSquare  = Traits<Channel>::MaxValue * Traits<Channel>::MaxValue;
+
+            const int DistanceLFactor = (int)(MaxValueSquare / ((Max_L - Min_L) * (Max_L - Min_L)));
+            const int DistanceAFactor = (int)(MaxValueSquare / ((Max_a - Min_a) * (Max_a - Min_a)));
+            const int DistanceBFactor = (int)(MaxValueSquare / ((Max_b - Min_b) * (Max_b - Min_b)));
+
+            int32_t dL = c1.L - c2.L;
+            dL *= dL;
+            dL /= DistanceLFactor;
+            int32_t da = c1.a - c2.a;
+            da *= da;
+            da /= DistanceAFactor;
+            int32_t db = c1.b - c2.b;
+            db *= db;
+            db /= DistanceBFactor;
+
+            return isqrt(dL + da + db);
+        }
+
     private:
         static inline Real f(Real input)
         {
@@ -199,13 +204,13 @@ namespace IRL
         template<class T>
         static inline T Normalize(Real val, Real min, Real max)
         {
-            int result = (int)(MaxValue<T>::Value * (val - min) / (max - min));
+            int result = (int)(Traits<T>::MaxValue * (val - min) / (max - min));
             if (result < 0)
                 result = 0;
             else
             {
-                if (result > MaxValue<T>::Value)
-                    result = MaxValue<T>::Value;
+                if (result > Traits<T>::MaxValue)
+                    result = Traits<T>::MaxValue;
             }
             return (T)result;
         }
@@ -213,7 +218,7 @@ namespace IRL
         template<class T>
         static inline Real Denormalize(T val, Real min, Real max)
         {
-            return (Real)val * (max - min) / MaxValue<T>::Value + min;
+            return (Real)val * (max - min) / Traits<T>::MaxValue + min;
         }
     };
 }

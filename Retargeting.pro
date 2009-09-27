@@ -4,7 +4,7 @@ debug {
 }
 SOURCES += main.cpp
 
-HEADERS += pstdint.h Assert.h Config.h Real.h
+HEADERS += pstdint.h Assert.h Config.h Real.h MathTools.h
 HEADERS += Color.h
 
 HEADERS += Image.h
