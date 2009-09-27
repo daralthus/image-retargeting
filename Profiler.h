@@ -1,7 +1,7 @@
 #pragma once
 
-#include <iostream>
 #include <time.h>
+#include <string>
 
 namespace IRL
 {
@@ -10,11 +10,15 @@ namespace IRL
         class Profiler
         {
         public:
-            Profiler(const char* name);
+            Profiler(const std::string& name);
             ~Profiler();
+
         private:
-            const char* _name;
-            clock_t _start;
+            clock_t _startTime;
+            Profiler* _parent;
+
+            class Result;
+            Result* _result;
         };
     }
 }
