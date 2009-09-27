@@ -28,7 +28,38 @@ namespace IRL
 
     class Color
     {
+        template<class T>
+        struct ValueType;
+        template<class T>
+        struct MaxValue;
+
+        // uint8_t 
+        template<>
+        struct ValueType<uint8_t>
+        {
+            typedef uint32_t Type;
+        };
+        template<>
+        struct MaxValue<uint8_t>
+        {
+            static const int Value = UINT8_MAX;
+        };
+
+        // uint16_t
+        template<>
+        struct ValueType<uint16_t>
+        {
+            typedef uint64_t Type;
+        };
+        template<>
+        struct MaxValue<uint16_t>
+        {
+            static const int Value = UINT16_MAX;
+        };
+
     public:
+        typedef uint8_t Channel;
+
         enum Space
         {
             RGB = 0,
@@ -39,41 +70,57 @@ namespace IRL
         {
             struct 
             {
-                uint16_t L;
-                uint16_t a;
-                uint16_t b;
+                Channel L;
+                Channel a;
+                Channel b;
             };
             struct 
             {
-                uint8_t B;
-                uint8_t G;
-                uint8_t R;
-
-                uint8_t Dummy0;
-                uint16_t Dummy1;
-
-                uint16_t A;
+                Channel B;
+                Channel G;
+                Channel R;
+                Channel A;
             };
-            uint64_t Value;
+
+            ValueType<Channel>::Type Value;
         };
 
         Color()
         { }
 
-        explicit Color(uint32_t argb) : Value(argb)
-        { 
-            A = (uint16_t)((argb & 0xff000000) >> 24) * (UINT16_MAX / UINT8_MAX);
-        }
-
         Color(const Color& c) : Value(c.Value)
         { }
+
+        uint32_t ToARGB32() const
+        {
+            uint8_t Rb = R / (MaxValue<Channel>::Value / UINT8_MAX);
+            uint8_t Gb = G / (MaxValue<Channel>::Value / UINT8_MAX);
+            uint8_t Bb = B / (MaxValue<Channel>::Value / UINT8_MAX);
+            uint8_t Ab = A / (MaxValue<Channel>::Value / UINT8_MAX);
+            return (Ab << 24) | (Rb << 16) | (Gb << 8) | Bb;
+        }
+
+        static const Color FromARGB32(uint32_t color)
+        {
+            int Bb = (color & 0x000000ff) >> 0;
+            int Gb = (color & 0x0000ff00) >> 8;
+            int Rb = (color & 0x00ff0000) >> 16;
+            int Ab = (color & 0xff000000) >> 24;
+
+            Color result;
+            result.R = Rb * (MaxValue<Channel>::Value / UINT8_MAX);
+            result.G = Gb * (MaxValue<Channel>::Value / UINT8_MAX);
+            result.B = Bb * (MaxValue<Channel>::Value / UINT8_MAX);
+            result.A = Ab * (MaxValue<Channel>::Value / UINT8_MAX);
+            return result;
+        }
 
         static inline Color LabToRGB(const Color& lab)
         {
             // ranges must correspond to ones in FromRGB
-            Real L = DenormalizeFrom16Bit(lab.L, Min_L, Max_L);
-            Real a = DenormalizeFrom16Bit(lab.a, Min_a, Max_a); 
-            Real b = DenormalizeFrom16Bit(lab.b, Min_b, Max_b);
+            Real L = Denormalize(lab.L, Min_L, Max_L);
+            Real a = Denormalize(lab.a, Min_a, Max_a); 
+            Real b = Denormalize(lab.b, Min_b, Max_b);
 
             // L*a*b* -> XYZ
 
@@ -92,9 +139,9 @@ namespace IRL
             Real B =  ToReal(0.068) * X - ToReal(0.229) * Y + ToReal(1.069) * Z;
 
             Color result;
-            result.R = NormalizeTo8Bit(R);
-            result.G = NormalizeTo8Bit(G);
-            result.B = NormalizeTo8Bit(B);
+            result.R = Normalize<Channel>(R, 0, 1);
+            result.G = Normalize<Channel>(G, 0, 1);
+            result.B = Normalize<Channel>(B, 0, 1);
             result.A = lab.A;
 
             return result;
@@ -102,14 +149,10 @@ namespace IRL
 
         static inline Color RGBToLab(const Color& rgb)
         {
-            uint8_t Rb = rgb.R;
-            uint8_t Gb = rgb.G;
-            uint8_t Bb = rgb.B;
-
             // RGB -> XYZ
-            Real R = (Rb / ToReal(255.0f));       //R from 0 to 255
-            Real G = (Gb / ToReal(255.0f));       //G from 0 to 255
-            Real B = (Bb / ToReal(255.0f));       //B from 0 to 255
+            Real R = Denormalize(rgb.R, 0, 1);
+            Real G = Denormalize(rgb.G, 0, 1);
+            Real B = Denormalize(rgb.B, 0, 1);
 
             // http://ru.wikipedia.org/wiki/RGB
             Real X = ToReal(0.431) * R + ToReal(0.342) * G + ToReal(0.178) * B;
@@ -126,17 +169,12 @@ namespace IRL
             Real b = 200 * (Y - Z);
 
             Color result;
-            result.L = NormalizeTo16Bit(L, Min_L, Max_L);
-            result.a = NormalizeTo16Bit(a, Min_a, Max_a); 
-            result.b = NormalizeTo16Bit(b, Min_b, Max_b);
+            result.L = Normalize<Channel>(L, Min_L, Max_L);
+            result.a = Normalize<Channel>(a, Min_a, Max_a); 
+            result.b = Normalize<Channel>(b, Min_b, Max_b);
             result.A = rgb.A;
 
             return result;
-        }
-
-        uint32_t ToARGB() const
-        {
-            return ((A / (UINT16_MAX / UINT8_MAX)) << 24) | (R << 16) | (G << 8) | B;
         }
 
     private:
@@ -158,35 +196,24 @@ namespace IRL
                 return (input - ToReal(16.0 / 116.0)) * 3 * LAB_delta * LAB_delta;
         }
 
-        static inline uint16_t NormalizeTo16Bit(Real val, Real min, Real max)
+        template<class T>
+        static inline T Normalize(Real val, Real min, Real max)
         {
-            Real res = (val - min) / (max - min);
-            if (res < 0) 
-                res = 0;
+            int result = (int)(MaxValue<T>::Value * (val - min) / (max - min));
+            if (result < 0)
+                result = 0;
             else
             {
-                if (res > ToReal(1.0f))
-                    res = ToReal(1.0f);
+                if (result > MaxValue<T>::Value)
+                    result = MaxValue<T>::Value;
             }
-            return (uint16_t)(UINT16_MAX * res);
+            return (T)result;
         }
 
-        static inline Real DenormalizeFrom16Bit(uint16_t val, Real min, Real max)
+        template<class T>
+        static inline Real Denormalize(T val, Real min, Real max)
         {
-            return (Real)val * (max - min) / UINT16_MAX + min;
-        }
-
-        static inline uint8_t NormalizeTo8Bit(Real val)
-        {
-            int res = (int)(val * 255);
-            if (res < 0)
-                res = 0;
-            else
-            {
-                if (res > 255)
-                    res = 255;
-            }
-            return (uint8_t)res;
+            return (Real)val * (max - min) / MaxValue<T>::Value + min;
         }
     };
 }

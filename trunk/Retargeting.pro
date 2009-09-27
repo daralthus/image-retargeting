@@ -9,3 +9,6 @@ HEADERS += Color.h
 
 HEADERS += Image.h
 SOURCES += Image.cpp
+
+HEADERS += Profiler.h
+SOURCES += Profiler.cpp
