@@ -1,5 +1,6 @@
 #include "Image.h"
 #include "Config.h"
+#include "Profiler.h"
 
 #ifdef IRL_USE_QT
 #include <QtGui/QImage>
@@ -45,12 +46,14 @@ namespace IRL
     void Image::ImagePrivate::ConvertRGBToLab()
     {
         ASSERT(ColorSpace == Color::RGB);
+        Tools::Profiler profiler("ImagePrivate::ConvertRGBToLab");
         ConvertColorSpace(Data, Width, Height, Color::RGBToLab);
     }
  
     void Image::ImagePrivate::ConvertLabToRGB()
     {
         ASSERT(ColorSpace == Color::Lab);
+        Tools::Profiler profiler("ImagePrivate::ConvertLabToRGB");
         ConvertColorSpace(Data, Width, Height, Color::LabToRGB);
     }
 
@@ -59,6 +62,7 @@ namespace IRL
 
     Image::ImagePrivate* Image::ImagePrivate::Clone() const
     {
+        Tools::Profiler profiler("ImagePrivate::Clone");
         Image::ImagePrivate* res = Create(Width, Height, ColorSpace);
         if (!res)
             return NULL;
@@ -72,6 +76,7 @@ namespace IRL
 #ifdef IRL_USE_QT
     Image::ImagePrivate* Image::ImagePrivate::Load(const std::string& path)
     {
+        Tools::Profiler profiler("ImagePrivate::Load");
         QImage img(QString::fromStdString(path));
         if (img.isNull())
             return NULL;
@@ -82,7 +87,7 @@ namespace IRL
         Color* end = color + img.width() * img.height();
         while (color != end)
         {
-            *color = Color(*rgb);
+            *color = Color::FromARGB32(*rgb);
             ++color;
             ++rgb;
         }
@@ -91,6 +96,7 @@ namespace IRL
 
     bool Image::ImagePrivate::Save(const std::string& path) const
     {
+        Tools::Profiler profiler("ImagePrivate::Save");
         ImagePrivate* src = (ImagePrivate*)this;
 
         // Convert to RGBA if required
@@ -109,7 +115,7 @@ namespace IRL
         Color* end = color + Width * Height;
         while (color != end)
         {
-            *bits = color->ToARGB();
+            *bits = color->ToARGB32();
             ++color;
             ++bits;
         }
