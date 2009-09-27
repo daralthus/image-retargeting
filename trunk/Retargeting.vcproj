@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9,00"
+	Version="9.00"
 	Name="Retargeting"
 	ProjectGUID="{F1704378-C363-3E13-9FC3-DBAEE704F7D8}"
 	Keyword="Qt4VSv1.0"
@@ -235,6 +235,10 @@
 			</File>
 			<File
 				RelativePath="Image.h"
+				>
+			</File>
+			<File
+				RelativePath=".\MathTools.h"
 				>
 			</File>
 			<File

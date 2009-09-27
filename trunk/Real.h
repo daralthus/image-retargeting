@@ -25,4 +25,13 @@ namespace IRL
         return powf(x, y);
 #endif
     }
+
+    inline Real RealSqrt(Real x)
+    {
+#ifdef IRL_DOUBLE_PRECISION
+        return sqrt(x);
+#else
+        return sqrtf(x);
+#endif
+    }
 }
