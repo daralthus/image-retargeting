@@ -37,17 +37,6 @@ namespace IRL
         Data = data;
     }
 
-    void Image::MakePrivate()
-    {
-        ASSERT(IsValid());
-        if (_ptr->GetRefs() == 1)
-            return; // already private
-        ImagePrivate* copy = _ptr->Clone();
-        _ptr->Release();
-        _ptr = copy;
-    }
-
-
     //////////////////////////////////////////////////////////////////////////
     // Template conversion routine.
 

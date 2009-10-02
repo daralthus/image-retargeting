@@ -2,7 +2,7 @@
 
 #include "Assert.h"
 #include "Color.h"
-#include "RefCounted.h"
+#include "CopyOnWrite.h"
 
 #include <vector>
 
@@ -12,16 +12,8 @@ namespace IRL
     // Supports copy on write.
     class Image
     {
+        IMPLEMENT_COPY_ON_WRITE(Image);
     public:
-        Image() : _ptr(NULL)
-        {
-        }
-
-        Image(const Image& img) : _ptr(NULL)
-        { 
-            *this = img;
-        }
-
         Image(uint32_t w, uint32_t h, Color::Space colorSpace)
         {
             _ptr = ImagePrivate::Create(w, h, colorSpace);
@@ -30,29 +22,6 @@ namespace IRL
         explicit Image(const std::string& path)
         {
             _ptr = ImagePrivate::Load(path);
-        }
-
-        ~Image()
-        { 
-            if (_ptr)
-                _ptr->Release();
-        }
-
-        Image& operator=(const Image& img)
-        {
-            if (img._ptr == _ptr)
-                return *this;
-            if (img._ptr)
-                img._ptr->Acquire();
-            if (_ptr)
-                _ptr->Release();
-            _ptr = img._ptr;
-            return *this;
-        }
-
-        bool IsValid() const 
-        { 
-            return _ptr != NULL;
         }
 
         uint32_t Width() const
@@ -111,8 +80,6 @@ namespace IRL
         }
 
     private:
-        void MakePrivate();
-
         // Private shared data
         class ImagePrivate : 
             public RefCounted<ImagePrivate>
@@ -136,7 +103,5 @@ namespace IRL
             Color::Space ColorSpace;
             Color* Data;
         };
-
-        ImagePrivate* _ptr;
     };
 }
