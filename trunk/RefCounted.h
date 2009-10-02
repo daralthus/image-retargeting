@@ -8,7 +8,6 @@ namespace IRL
     public:
         RefCounted() : _refs(1)
         { }
-
         void Acquire() const
         {
             _refs++;
