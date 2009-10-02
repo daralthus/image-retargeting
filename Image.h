@@ -36,6 +36,12 @@ namespace IRL
             return _ptr->Height;
         }
 
+        Color::Space ColorSpace() const
+        {
+            ASSERT(IsValid());
+            return _ptr->ColorSpace;
+        }
+
         Color* Data() 
         {
             ASSERT(IsValid());
