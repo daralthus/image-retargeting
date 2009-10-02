@@ -10,7 +10,7 @@
 namespace IRL
 {
     //////////////////////////////////////////////////////////////////////////
-    // Create and Free 
+    // Create, Free, Copy on write
 
     Image::ImagePrivate* Image::ImagePrivate::Create(uint32_t w, uint32_t h, Color::Space colorSpace)
     {
@@ -22,11 +22,31 @@ namespace IRL
         return res;
     }
 
-    void Image::ImagePrivate::Delete(const ImagePrivate* ptr)
+    void Image::ImagePrivate::Delete(ImagePrivate* obj)
     {
-        ptr->~ImagePrivate();
-        free((void*)ptr);
+        obj->~ImagePrivate();
+        free(obj);
     }
+
+    Image::ImagePrivate::ImagePrivate(uint32_t w, uint32_t h, Color::Space colorSpace, 
+        Color* data)
+    {
+        Width = w;
+        Height = h;
+        ColorSpace = colorSpace;
+        Data = data;
+    }
+
+    void Image::MakePrivate()
+    {
+        ASSERT(IsValid());
+        if (_ptr->GetRefs() == 1)
+            return; // already private
+        ImagePrivate* copy = _ptr->Clone();
+        _ptr->Release();
+        _ptr = copy;
+    }
+
 
     //////////////////////////////////////////////////////////////////////////
     // Template conversion routine.
@@ -72,6 +92,25 @@ namespace IRL
         }
         tasks[i].Set(ptr, end, convert);
         tasks.SpawnAndSync();
+    }
+
+    void Image::ImagePrivate::ChangeColorSpace(Color::Space newColorSpace)
+    {
+        if (newColorSpace == ColorSpace)
+            return;
+        if (ColorSpace == Color::RGB && newColorSpace == Color::Lab)
+        {
+            ConvertRGBToLab();
+            ColorSpace = newColorSpace;
+            return;
+        }
+        if (ColorSpace == Color::Lab && newColorSpace == Color::RGB)
+        {
+            ConvertLabToRGB();
+            ColorSpace = newColorSpace;
+            return;
+        }
+        ASSERT(false && "No such color conversion defined");
     }
 
     void Image::ImagePrivate::ConvertRGBToLab()

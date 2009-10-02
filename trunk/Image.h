@@ -2,13 +2,14 @@
 
 #include "Assert.h"
 #include "Color.h"
+#include "RefCounted.h"
 
 #include <vector>
 
 namespace IRL
 {
     // Image is a two-dimensional array of pixels (Color's).
-    // Acts as a shared pointer to private data.
+    // Supports copy on write.
     class Image
     {
     public:
@@ -49,17 +50,6 @@ namespace IRL
             return *this;
         }
 
-        const Image Clone() const
-        {
-            if (IsValid())
-            {
-                Image result;
-                result._ptr = _ptr->Clone();
-                return result;
-            } else
-                return Image();
-        }
-
         bool IsValid() const 
         { 
             return _ptr != NULL;
@@ -80,6 +70,7 @@ namespace IRL
         Color* Data() 
         {
             ASSERT(IsValid());
+            MakePrivate();
             return &_ptr->Data[0];
         }
 
@@ -94,7 +85,8 @@ namespace IRL
             ASSERT(IsValid());
             ASSERT(x < Width());
             ASSERT(y < Height());
-            return Data()[x + y * Width()];
+            MakePrivate();
+            return _ptr->Data[x + y * Width()];
         }
 
         const Color& Pixel(uint32_t x, uint32_t y) const
@@ -102,92 +94,47 @@ namespace IRL
             ASSERT(IsValid());
             ASSERT(x < Width());
             ASSERT(y < Height());
-            return Data()[x + y * Width()];
+            return _ptr->Data[x + y * Width()];
         }
 
         void ChangeColorSpace(Color::Space newColorSpace)
         {
             ASSERT(IsValid());
+            MakePrivate();
             _ptr->ChangeColorSpace(newColorSpace);
         }
         
-        bool Save(const std::string& path)
+        bool Save(const std::string& path) const
         {
             ASSERT(IsValid());
             return _ptr->Save(path);
         }
 
     private:
+        void MakePrivate();
+
         // Private shared data
-        class ImagePrivate
+        class ImagePrivate : 
+            public RefCounted<ImagePrivate>
         {
-            ImagePrivate(uint32_t w, uint32_t h, Color::Space colorSpace, 
-                Color* data)
-            {
-                Width = w;
-                Height = h;
-                ColorSpace = colorSpace;
-                Data = data;
-                _refs = 1;
-            }
-
-            ~ImagePrivate()
-            {
-                ASSERT(_refs == 0);
-            }
-
+            ImagePrivate(uint32_t w, uint32_t h, Color::Space colorSpace, Color* data);
         public:
             static ImagePrivate* Create(uint32_t w, uint32_t h, Color::Space colorSpace);
             static ImagePrivate* Load(const std::string& path);
+            static void Delete(ImagePrivate* obj);
+        
+            ImagePrivate* Clone() const;
+            bool Save(const std::string& path) const;
 
+            void ChangeColorSpace(Color::Space newColorSpace);
+            void ConvertRGBToLab();
+            void ConvertLabToRGB();
+
+        public:
             uint32_t Width;
             uint32_t Height;
             Color::Space ColorSpace;
             Color* Data;
-
-        public:
-            void Acquire() const
-            {
-                _refs++; // TODO: make atomic
-            }
-            void Release() const
-            {
-                --_refs; // TODO: make atomic
-                if (_refs == 0)
-                    Delete(this);
-            }
-
-            ImagePrivate* Clone() const;
-
-            void ChangeColorSpace(Color::Space newColorSpace)
-            {
-                if (newColorSpace == ColorSpace)
-                    return;
-                if (ColorSpace == Color::RGB && newColorSpace == Color::Lab)
-                {
-                    ConvertRGBToLab();
-                    ColorSpace = newColorSpace;
-                    return;
-                }
-                if (ColorSpace == Color::Lab && newColorSpace == Color::RGB)
-                {
-                    ConvertLabToRGB();
-                    ColorSpace = newColorSpace;
-                    return;
-                }
-                ASSERT(false && "No such color conversion defined");
-            }
-
-            void ConvertRGBToLab();
-            void ConvertLabToRGB();
-
-            bool Save(const std::string& path) const;
-
-        private:
-            mutable int32_t _refs;
-
-            // Counterpart to Create and Load
-            static void Delete(const ImagePrivate* ptr);
         };
 
         ImagePrivate* _ptr;
