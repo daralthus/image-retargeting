@@ -7,14 +7,14 @@
 
 #define IMPLEMENT_COPY_ON_WRITE(ClassName)                              \
 private:                                                                \
-    class ClassName##Private;                                           \
-    ClassName##Private* _ptr;                                           \
+    class Private;                                                      \
+    Private* _ptr;                                                      \
     void MakePrivate()                                                  \
     {                                                                   \
         ASSERT(IsValid());                                              \
         if (_ptr->GetRefs() == 1)                                       \
             return;                                                     \
-       ClassName##Private* copy = _ptr->Clone();                        \
+        Private* copy = _ptr->Clone();                                  \
         _ptr->Release();                                                \
         _ptr = copy;                                                    \
     }                                                                   \
