@@ -12,3 +12,6 @@ SOURCES += Image.cpp
 
 HEADERS += Profiler.h
 SOURCES += Profiler.cpp
+
+HEADERS += ThreadingQt.h Parallel.h
+SOURCES += Parallel.cpp

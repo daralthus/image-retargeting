@@ -1,5 +1,6 @@
 #include "Profiler.h"
 #include "Assert.h"
+#include "Threading.h"
 
 #include <iostream>
 #include <vector>
@@ -8,7 +9,7 @@ namespace IRL
 {
     namespace Tools
     {
-        static Profiler* g_LastProfiler = NULL; // TODO: move to TLS
+        static ThreadLocal<Profiler*> g_LastProfiler;
 
         class Profiler::Result
         {
@@ -65,15 +66,18 @@ namespace IRL
             _startTime(clock())
         {
             _result = new Result(name);
-            _parent = g_LastProfiler;
-            g_LastProfiler = this;
+            if (g_LastProfiler.IsSet())
+                _parent = g_LastProfiler.Get();
+            else
+                _parent = NULL;
+            g_LastProfiler.Set(this);
         }
 
         Profiler::~Profiler()
         {
-            ASSERT(g_LastProfiler == this);
+            ASSERT(g_LastProfiler.Get() == this);
             _result->SetTotalTime(clock() - _startTime);
-            g_LastProfiler = _parent;
+            g_LastProfiler.Set(_parent);
             if (_parent != NULL)
                 _parent->_result->AddChild(_result);
             else

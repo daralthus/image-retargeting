@@ -1,6 +1,7 @@
 #include "Image.h"
 #include "Config.h"
 #include "Profiler.h"
+#include "Parallel.h"
 
 #ifdef IRL_USE_QT
 #include <QtGui/QImage>
@@ -30,17 +31,47 @@ namespace IRL
     //////////////////////////////////////////////////////////////////////////
     // Template conversion routine.
 
+    template<class Proc>
+    class ConvertTask :
+        public Parallel::Runnable
+    {
+        Color* _start;
+        Color* _end;
+        Proc _conv;
+    public:
+        void Set(Color* start, Color* end, Proc conv)
+        {
+            _start = start;
+            _end = end;
+            _conv = conv;
+        }
+
+        virtual void Run()
+        {
+            Color* ptr = _start;
+            while (ptr < _end)
+            {
+                *ptr = _conv(*ptr);
+                ++ptr;
+            }
+        }
+    };
+
     template<class ConvertProcType>
     void ConvertColorSpace(Color* ptr, uint32_t w, uint32_t h, ConvertProcType convert)
     {
-        // TODO: make parallel
-
+        // ~250
+        Parallel::TaskList<ConvertTask<ConvertProcType> > tasks;
+        int step = w * h / tasks.Count();
         Color* end = ptr + w * h;
-        while (ptr < end)
+        int i = 0;
+        for (i = 0; i < tasks.Count() - 1; i++)
         {
-            *ptr = convert(*ptr);
-            ++ptr;
+            tasks[i].Set(ptr, ptr + step, convert);
+            ptr += step;
         }
+        tasks[i].Set(ptr, end, convert);
+        tasks.SpawnAndSync();
     }
 
     void Image::ImagePrivate::ConvertRGBToLab()
