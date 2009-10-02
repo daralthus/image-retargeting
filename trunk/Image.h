@@ -16,12 +16,12 @@ namespace IRL
     public:
         Image(uint32_t w, uint32_t h, Color::Space colorSpace)
         {
-            _ptr = ImagePrivate::Create(w, h, colorSpace);
+            _ptr = Private::Create(w, h, colorSpace);
         }
 
         explicit Image(const std::string& path)
         {
-            _ptr = ImagePrivate::Load(path);
+            _ptr = Private::Load(path);
         }
 
         uint32_t Width() const
@@ -81,16 +81,16 @@ namespace IRL
 
     private:
         // Private shared data
-        class ImagePrivate : 
-            public RefCounted<ImagePrivate>
+        class Private : 
+            public RefCounted<Private>
         {
-            ImagePrivate(uint32_t w, uint32_t h, Color::Space colorSpace, Color* data);
+            Private(uint32_t w, uint32_t h, Color::Space colorSpace, Color* data);
         public:
-            static ImagePrivate* Create(uint32_t w, uint32_t h, Color::Space colorSpace);
-            static ImagePrivate* Load(const std::string& path);
-            static void Delete(ImagePrivate* obj);
+            static Private* Create(uint32_t w, uint32_t h, Color::Space colorSpace);
+            static Private* Load(const std::string& path);
+            static void Delete(Private* obj);
         
-            ImagePrivate* Clone() const;
+            Private* Clone() const;
             bool Save(const std::string& path) const;
 
             void ChangeColorSpace(Color::Space newColorSpace);

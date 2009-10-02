@@ -12,23 +12,23 @@ namespace IRL
     //////////////////////////////////////////////////////////////////////////
     // Create, Free, Copy on write
 
-    Image::ImagePrivate* Image::ImagePrivate::Create(uint32_t w, uint32_t h, Color::Space colorSpace)
+    Image::Private* Image::Private::Create(uint32_t w, uint32_t h, Color::Space colorSpace)
     {
-        int sz = sizeof(Image::ImagePrivate) + w * h * sizeof(Color);
+        int sz = sizeof(Image::Private) + w * h * sizeof(Color);
         uint8_t* ptr = (uint8_t*)malloc(sz);
         ASSERT(ptr != NULL);
-        Image::ImagePrivate* res = (Image::ImagePrivate*)ptr;
-        new(res) Image::ImagePrivate(w, h, colorSpace, (Color*)(ptr + sizeof(Image::ImagePrivate)));
+        Image::Private* res = (Image::Private*)ptr;
+        new(res) Image::Private(w, h, colorSpace, (Color*)(ptr + sizeof(Image::Private)));
         return res;
     }
 
-    void Image::ImagePrivate::Delete(ImagePrivate* obj)
+    void Image::Private::Delete(Private* obj)
     {
-        obj->~ImagePrivate();
+        obj->~Private();
         free(obj);
     }
 
-    Image::ImagePrivate::ImagePrivate(uint32_t w, uint32_t h, Color::Space colorSpace, 
+    Image::Private::Private(uint32_t w, uint32_t h, Color::Space colorSpace, 
         Color* data)
     {
         Width = w;
@@ -83,7 +83,7 @@ namespace IRL
         tasks.SpawnAndSync();
     }
 
-    void Image::ImagePrivate::ChangeColorSpace(Color::Space newColorSpace)
+    void Image::Private::ChangeColorSpace(Color::Space newColorSpace)
     {
         if (newColorSpace == ColorSpace)
             return;
@@ -102,27 +102,27 @@ namespace IRL
         ASSERT(false && "No such color conversion defined");
     }
 
-    void Image::ImagePrivate::ConvertRGBToLab()
+    void Image::Private::ConvertRGBToLab()
     {
         ASSERT(ColorSpace == Color::RGB);
-        Tools::Profiler profiler("ImagePrivate::ConvertRGBToLab");
+        Tools::Profiler profiler("Private::ConvertRGBToLab");
         ConvertColorSpace(Data, Width, Height, Color::RGBToLab);
     }
  
-    void Image::ImagePrivate::ConvertLabToRGB()
+    void Image::Private::ConvertLabToRGB()
     {
         ASSERT(ColorSpace == Color::Lab);
-        Tools::Profiler profiler("ImagePrivate::ConvertLabToRGB");
+        Tools::Profiler profiler("Private::ConvertLabToRGB");
         ConvertColorSpace(Data, Width, Height, Color::LabToRGB);
     }
 
     //////////////////////////////////////////////////////////////////////////
     // Cloning
 
-    Image::ImagePrivate* Image::ImagePrivate::Clone() const
+    Image::Private* Image::Private::Clone() const
     {
-        Tools::Profiler profiler("ImagePrivate::Clone");
-        Image::ImagePrivate* res = Create(Width, Height, ColorSpace);
+        Tools::Profiler profiler("Private::Clone");
+        Image::Private* res = Create(Width, Height, ColorSpace);
         if (!res)
             return NULL;
         memcpy(res->Data, Data, sizeof(Color) * Width * Height);
@@ -133,13 +133,13 @@ namespace IRL
     // Image loading & saving
 
 #ifdef IRL_USE_QT
-    Image::ImagePrivate* Image::ImagePrivate::Load(const std::string& path)
+    Image::Private* Image::Private::Load(const std::string& path)
     {
-        Tools::Profiler profiler("ImagePrivate::Load");
+        Tools::Profiler profiler("Private::Load");
         QImage img(QString::fromStdString(path));
         if (img.isNull())
             return NULL;
-        Image::ImagePrivate* result = Create(img.width(), img.height(), Color::RGB);
+        Image::Private* result = Create(img.width(), img.height(), Color::RGB);
         img.convertToFormat(QImage::Format_ARGB32);
         uint32_t* rgb = (uint32_t*)img.bits();
         Color* color = result->Data;
@@ -153,10 +153,10 @@ namespace IRL
         return result;
     }
 
-    bool Image::ImagePrivate::Save(const std::string& path) const
+    bool Image::Private::Save(const std::string& path) const
     {
-        Tools::Profiler profiler("ImagePrivate::Save");
-        ImagePrivate* src = (ImagePrivate*)this;
+        Tools::Profiler profiler("Private::Save");
+        Private* src = (Private*)this;
 
         // Convert to RGBA if required
         if (ColorSpace != Color::RGB)
@@ -184,6 +184,6 @@ namespace IRL
         return result;
     }
 #else
-#error Implement Image::ImagePrivate::Load and Save
+#error Implement Image::Private::Load and Save
 #endif
 }
