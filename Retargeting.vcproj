@@ -212,6 +212,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Parallel.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\Profiler.cpp"
 				>
 			</File>
@@ -242,6 +246,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Parallel.h"
+				>
+			</File>
+			<File
 				RelativePath=".\Profiler.h"
 				>
 			</File>
@@ -251,6 +259,14 @@
 			</File>
 			<File
 				RelativePath="Real.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Threading.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ThreadingQt.h"
 				>
 			</File>
 		</Filter>
