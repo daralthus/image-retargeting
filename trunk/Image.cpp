@@ -69,7 +69,6 @@ namespace IRL
     template<class ConvertProcType>
     void ConvertColorSpace(Color* ptr, uint32_t w, uint32_t h, ConvertProcType convert)
     {
-        // ~250
         Parallel::TaskList<ConvertTask<ConvertProcType> > tasks;
         int step = w * h / tasks.Count();
         Color* end = ptr + w * h;
@@ -105,14 +104,14 @@ namespace IRL
     void Image::Private::ConvertRGBToLab()
     {
         ASSERT(ColorSpace == Color::RGB);
-        Tools::Profiler profiler("Private::ConvertRGBToLab");
+        Tools::Profiler profiler("Image::Private::ConvertRGBToLab");
         ConvertColorSpace(Data, Width, Height, Color::RGBToLab);
     }
  
     void Image::Private::ConvertLabToRGB()
     {
         ASSERT(ColorSpace == Color::Lab);
-        Tools::Profiler profiler("Private::ConvertLabToRGB");
+        Tools::Profiler profiler("Image::Private::ConvertLabToRGB");
         ConvertColorSpace(Data, Width, Height, Color::LabToRGB);
     }
 
@@ -121,7 +120,6 @@ namespace IRL
 
     Image::Private* Image::Private::Clone() const
     {
-        Tools::Profiler profiler("Private::Clone");
         Image::Private* res = Create(Width, Height, ColorSpace);
         if (!res)
             return NULL;
@@ -135,7 +133,7 @@ namespace IRL
 #ifdef IRL_USE_QT
     Image::Private* Image::Private::Load(const std::string& path)
     {
-        Tools::Profiler profiler("Private::Load");
+        Tools::Profiler profiler("Image::Private::Load");
         QImage img(QString::fromStdString(path));
         if (img.isNull())
             return NULL;
@@ -155,7 +153,7 @@ namespace IRL
 
     bool Image::Private::Save(const std::string& path) const
     {
-        Tools::Profiler profiler("Private::Save");
+        Tools::Profiler profiler("Image::Private::Save");
         Private* src = (Private*)this;
 
         // Convert to RGBA if required

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="9,00"
 	Name="Retargeting"
 	ProjectGUID="{F1704378-C363-3E13-9FC3-DBAEE704F7D8}"
 	Keyword="Qt4VSv1.0"
@@ -204,6 +204,10 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\GaussianPyramid.cpp"
+				>
+			</File>
+			<File
 				RelativePath="Image.cpp"
 				>
 			</File>
@@ -238,6 +242,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CopyOnWrite.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GaussianPyramid.h"
+				>
+			</File>
+			<File
 				RelativePath="Image.h"
 				>
 			</File>
@@ -259,6 +271,10 @@
 			</File>
 			<File
 				RelativePath="Real.h"
+				>
+			</File>
+			<File
+				RelativePath=".\RefCounted.h"
 				>
 			</File>
 			<File

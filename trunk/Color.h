@@ -75,6 +75,14 @@ namespace IRL
         Color()
         { }
 
+        Color(Channel c1, Channel c2, Channel c3, Channel c4)
+        {
+            R = c1;
+            G = c2;
+            B = c3;
+            A = c4;
+        }
+
         uint32_t ToARGB32() const
         {
             uint8_t Rb = R / (Traits<Channel>::MaxValue / UINT8_MAX);
