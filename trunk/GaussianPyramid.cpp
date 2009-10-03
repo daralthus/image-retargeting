@@ -13,9 +13,10 @@ namespace IRL
     {
         static int LookUp[5];
     public:
-        static const int HalfSize()   { return 2; }
-        static const int Value(int i) { return LookUp[i + HalfSize()]; }
-        static const int Sum()        { return 16; }
+        static const int HalfSize()        { return 2; }
+        static const int Value(int i)      { return LookUp[i + HalfSize()]; }
+        static const int Sum()             { return 16; }
+        static const int Normalize(int in) { return in / Sum(); }
     };
     int Kernel1D5Tap::LookUp[5] = { 1, 4, 6, 4, 1 };
 
@@ -109,9 +110,9 @@ namespace IRL
                 G += int(src->G) * Kernel::Value(m);
                 B += int(src->B) * Kernel::Value(m);
             }
-            R /= Kernel::Sum();
-            G /= Kernel::Sum();
-            B /= Kernel::Sum();
+            R = Kernel::Normalize(R);
+            G = Kernel::Normalize(G);
+            B = Kernel::Normalize(B);
             return Color(R, G, B, S.Src->Pixel(2*x, 2*y).A);
         }
 
@@ -127,9 +128,9 @@ namespace IRL
                 G += int(src->G) * Kernel::Value(m);
                 B += int(src->B) * Kernel::Value(m);
             }
-            R /= Kernel::Sum();
-            G /= Kernel::Sum();
-            B /= Kernel::Sum();
+            R = Kernel::Normalize(R);
+            G = Kernel::Normalize(G);
+            B = Kernel::Normalize(B);
             return Color(R, G, B, S.Src->Pixel(2*x, 2*y).A);
         }
 
@@ -146,9 +147,9 @@ namespace IRL
                 G += int(src->G) * Kernel::Value(m);
                 B += int(src->B) * Kernel::Value(m);
             }
-            R /= Kernel::Sum();
-            G /= Kernel::Sum();
-            B /= Kernel::Sum();
+            R = Kernel::Normalize(R);
+            G = Kernel::Normalize(G);
+            B = Kernel::Normalize(B);
             return Color(R, G, B, S.Src->Pixel(2*x, 2*y).A);
         }
     };
@@ -189,9 +190,9 @@ namespace IRL
                 G += int(src->G) * Kernel::Value(m);
                 B += int(src->B) * Kernel::Value(m);
             }
-            R /= Kernel::Sum();
-            G /= Kernel::Sum();
-            B /= Kernel::Sum();
+            R = Kernel::Normalize(R);
+            G = Kernel::Normalize(G);
+            B = Kernel::Normalize(B);
             return Color(R, G, B, S.Src->Pixel(2*x, 2*y).A);
         }
 
@@ -207,9 +208,9 @@ namespace IRL
                 G += int(src->G) * Kernel::Value(m);
                 B += int(src->B) * Kernel::Value(m);
             }
-            R /= Kernel::Sum();
-            G /= Kernel::Sum();
-            B /= Kernel::Sum();
+            R = Kernel::Normalize(R);
+            G = Kernel::Normalize(G);
+            B = Kernel::Normalize(B);
             return Color(R, G, B, S.Src->Pixel(2*x, 2*y).A);
         }
 
@@ -226,9 +227,9 @@ namespace IRL
                 G += int(src->G) * Kernel::Value(m);
                 B += int(src->B) * Kernel::Value(m);
             }
-            R /= Kernel::Sum();
-            G /= Kernel::Sum();
-            B /= Kernel::Sum();
+            R = Kernel::Normalize(R);
+            G = Kernel::Normalize(G);
+            B = Kernel::Normalize(B);
             return Color(R, G, B, S.Src->Pixel(2*x, 2*y).A);
         }
     };
