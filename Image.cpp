@@ -69,16 +69,8 @@ namespace IRL
     template<class ConvertProcType>
     void ConvertColorSpace(Color* ptr, uint32_t w, uint32_t h, ConvertProcType convert)
     {
-        Parallel::TaskList<ConvertTask<ConvertProcType> > tasks;
-        int step = w * h / tasks.Count();
-        Color* end = ptr + w * h;
-        int i = 0;
-        for (i = 0; i < tasks.Count() - 1; i++)
-        {
-            tasks[i].Set(ptr, ptr + step, convert);
-            ptr += step;
-        }
-        tasks[i].Set(ptr, end, convert);
+        Parallel::ParallelFor<ConvertTask<ConvertProcType>, 
+            ConvertProcType> tasks(ptr, ptr + w * h, convert);
         tasks.SpawnAndSync();
     }
 
