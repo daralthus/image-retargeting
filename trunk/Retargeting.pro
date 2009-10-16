@@ -6,11 +6,11 @@ SOURCES += main.cpp
 
 PRECOMPILED_HEADER = Includes.h
 
-HEADERS += pstdint.h Config.h Real.h MathTools.h RefCounted.h CopyOnWrite.h
-HEADERS += Color.h
+HEADERS += pstdint.h Config.h RefCounted.h CopyOnWrite.h
+HEADERS += Convert.h Accumulator.h TypeTraits.h
 
-HEADERS += Image.h
-SOURCES += Image.cpp
+HEADERS += IO.h
+SOURCES += IO.cpp
 
 HEADERS += Profiler.h
 SOURCES += Profiler.cpp
@@ -18,5 +18,8 @@ SOURCES += Profiler.cpp
 HEADERS += Threading.h ThreadingQt.h Parallel.h
 SOURCES += Parallel.cpp
 
+HEADERS += RGB.h Lab.h ColorConversion.h
+
+HEADERS += Image.h ImageConversion.h
+HEADERS += Scaling.h
 HEADERS += GaussianPyramid.h
-SOURCES += GaussianPyramid.cpp

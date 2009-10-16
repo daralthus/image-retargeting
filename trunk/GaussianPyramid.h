@@ -1,60 +1,39 @@
 #pragma once
 
 #include "Image.h"
-#include "CopyOnWrite.h"
+#include "Convert.h"
+#include "Scaling.h"
+#include "Profiler.h"
+#include "ImageConversion.h"
 
 namespace IRL
 {
+    template<class PixelType>
     class GaussianPyramid
     {
-        IMPLEMENT_COPY_ON_WRITE(GaussianPyramid);
     public:
-        GaussianPyramid(const Image& image, int levels)
+        GaussianPyramid()
         {
-            _ptr = new Private(image, levels);
+        }
+        GaussianPyramid(const Image<PixelType>& source, int levels)
+        {
+            Tools::Profiler profiler("GaussianPyramid::GaussianPyramid");
+            ASSERT(levels > 0);
+            Levels.resize(levels);
+            Levels[0] = source;
+            for (int i = 1; i < levels; i++)
+                Levels[i] = ScaleDown(Levels[i - 1]);
         }
 
-        int GetLevelsCount() const
-        {
-            ASSERT(IsValid());
-            return _ptr->Levels.size();
-        }
-
-        const Image& GetLevel(int level) const
-        {
-            ASSERT(IsValid());
-            ASSERT(level < GetLevelsCount());
-            return _ptr->Levels[level];
-        }
-
-        Image& GetLevel(int level)
-        {
-            ASSERT(IsValid());
-            ASSERT(level < GetLevelsCount());
-            MakePrivate();
-            return _ptr->Levels[level];
-        }
-
-        void Save(const std::string& filePath)
-        {
-            ASSERT(IsValid());
-            _ptr->Save(filePath);
-        }
-
-    private:
-        class Private :
-            public RefCounted<Private>
-        {
-            Private(const Private& copyFrom) : Levels(copyFrom.Levels) {}
-        public:
-            Private(const Image& image, int levels);
-            Private* Clone() const { return new Private(*this); }
-            static void Delete(Private* obj) { delete obj; }
-
-            void Save(const std::string& filePath);
-
-        public:
-            std::vector<Image> Levels;
-        };
+        std::vector<Image<PixelType> > Levels;
     };
+
+    // Converter for pyramid
+    template<class ToPixelFormat, class FromPixelFormat>
+    void Convert(GaussianPyramid<ToPixelFormat>& to, const GaussianPyramid<FromPixelFormat>& from)
+    {
+        to.Levels.resize(from.Levels.size());
+        for (unsigned int i = 0; i < from.Levels.size(); i++)
+            Convert(to.Levels[i], from.Levels[i]);
+    }
 }
