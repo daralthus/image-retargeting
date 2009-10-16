@@ -1,8 +1,5 @@
 #pragma once
 
-#include <math.h>
-#include "Config.h"
-
 namespace IRL
 {
 #ifdef IRL_DOUBLE_PRECISION

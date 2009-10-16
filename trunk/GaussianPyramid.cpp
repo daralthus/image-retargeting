@@ -1,8 +1,7 @@
+#include "Includes.h"
 #include "GaussianPyramid.h"
 #include "Parallel.h"
 #include "Profiler.h"
-
-#include <sstream>
 
 namespace IRL
 {

@@ -1,8 +1,5 @@
 #pragma once
 
-#include <time.h>
-#include <string>
-
 namespace IRL
 {
     namespace Tools

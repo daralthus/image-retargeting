@@ -1,5 +1,4 @@
-#include <iostream>
-#include <time.h>
+#include "Includes.h"
 
 #include "Image.h"
 #include "Profiler.h"
