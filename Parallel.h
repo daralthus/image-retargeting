@@ -65,7 +65,7 @@ namespace IRL
             std::vector<T> _vec;
         };
 
-        template<class Task, class State>
+        template<class Task, class State, class Index = int32_t>
         class ParallelFor :
             public TaskGroup<Task>
         {
@@ -75,8 +75,7 @@ namespace IRL
             ParallelFor(const ParallelFor&);
             void operator=(const ParallelFor&);
         public:
-            template<class IndexMin, class IndexMax>
-            ParallelFor(IndexMin min, IndexMax max, State state) :
+            ParallelFor(Index min, Index max, State state) :
               TaskGroup<Task>(0)
             {
                 ASSERT(max >= min);
@@ -89,7 +88,7 @@ namespace IRL
                     Resize(GetWorkersCount());
                 int step = (max - min) / Count();
                 int i = 0;
-                IndexMin pos = min;
+                Index pos = min;
                 for (; i < Count() - 1; i++)
                 {
                     (*this)[i].Set(pos, pos + step, state);

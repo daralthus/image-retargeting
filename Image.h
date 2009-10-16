@@ -11,7 +11,7 @@ namespace IRL
     {
         IMPLEMENT_COPY_ON_WRITE(Image);
     public:
-        Image(uint32_t w, uint32_t h, Color::Space colorSpace)
+        Image(int32_t w, int32_t h, Color::Space colorSpace)
         {
             _ptr = Private::Create(w, h, colorSpace);
         }
@@ -21,13 +21,13 @@ namespace IRL
             _ptr = Private::Load(path);
         }
 
-        uint32_t Width() const
+        int32_t Width() const
         {
             ASSERT(IsValid());
             return _ptr->Width;
         }
 
-        uint32_t Height() const
+        int32_t Height() const
         {
             ASSERT(IsValid());
             return _ptr->Height;
@@ -52,7 +52,7 @@ namespace IRL
             return &_ptr->Data[0];
         }
 
-        Color& Pixel(uint32_t x, uint32_t y)
+        Color& Pixel(int32_t x, int32_t y)
         {
             ASSERT(IsValid());
             ASSERT(x < Width());
@@ -61,10 +61,10 @@ namespace IRL
             return _ptr->Data[x + y * Width()];
         }
 
-        const Color& Pixel(uint32_t x, uint32_t y) const
+        const Color& Pixel(int32_t x, int32_t y) const
         {
             ASSERT(IsValid());
-            ASSERT(x < Width());
+            ASSERT(x >= 0 && x < Width());
             ASSERT(y < Height());
             return _ptr->Data[x + y * Width()];
         }
@@ -87,9 +87,9 @@ namespace IRL
         class Private : 
             public RefCounted<Private>
         {
-            Private(uint32_t w, uint32_t h, Color::Space colorSpace, Color* data);
+            Private(int32_t w, int32_t h, Color::Space colorSpace, Color* data);
         public:
-            static Private* Create(uint32_t w, uint32_t h, Color::Space colorSpace);
+            static Private* Create(int32_t w, int32_t h, Color::Space colorSpace);
             static Private* Load(const std::string& path);
             static void Delete(Private* obj);
         
@@ -101,8 +101,8 @@ namespace IRL
             void ConvertLabToRGB();
 
         public:
-            uint32_t Width;
-            uint32_t Height;
+            int32_t Width;
+            int32_t Height;
             Color::Space ColorSpace;
             Color* Data;
         };
