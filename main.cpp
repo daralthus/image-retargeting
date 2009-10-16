@@ -1,20 +1,34 @@
 #include "Includes.h"
-
-#include "Image.h"
+#include "IO.h"
 #include "Profiler.h"
-#include "Parallel.h"
 #include "GaussianPyramid.h"
 
 using namespace IRL;
 
-int main(int argc, char** argv)
+typedef LabDouble Color;
+
+int main(int, char**)
 {
     Parallel::Initialize(2);
 
     Tools::Profiler profiler("main");
-    IRL::Image img("Test.png");
-    IRL::GaussianPyramid pyr(img, 8);
-    pyr.Save("TestPyr.png");
+
+    // Load into RGB8
+    GaussianPyramid<RGB8> pyramid(LoadImage("Test.png"), 5);
+    GaussianPyramid<Color> anotherPyramid;
+
+    {
+        Tools::Profiler profiler("Converters");
+
+        // Convert RGB -> Color
+        Convert(anotherPyramid, pyramid);
+
+        // Convert Color -> RGB
+        Convert(pyramid, anotherPyramid);
+    }
+
+    // Save
+    SaveGaussianPyramid(pyramid, "Test.png");
 
     return 0;
 }
