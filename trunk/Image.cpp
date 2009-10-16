@@ -12,7 +12,7 @@ namespace IRL
     //////////////////////////////////////////////////////////////////////////
     // Create, Free, Copy on write
 
-    Image::Private* Image::Private::Create(uint32_t w, uint32_t h, Color::Space colorSpace)
+    Image::Private* Image::Private::Create(int32_t w, int32_t h, Color::Space colorSpace)
     {
         int sz = sizeof(Image::Private) + w * h * sizeof(Color);
         uint8_t* ptr = (uint8_t*)malloc(sz);
@@ -28,7 +28,7 @@ namespace IRL
         free(obj);
     }
 
-    Image::Private::Private(uint32_t w, uint32_t h, Color::Space colorSpace, 
+    Image::Private::Private(int32_t w, int32_t h, Color::Space colorSpace, 
         Color* data)
     {
         Width = w;
@@ -67,10 +67,10 @@ namespace IRL
     };
 
     template<class ConvertProcType>
-    void ConvertColorSpace(Color* ptr, uint32_t w, uint32_t h, ConvertProcType convert)
+    void ConvertColorSpace(Color* ptr, int32_t w, int32_t h, ConvertProcType convert)
     {
         Parallel::ParallelFor<ConvertTask<ConvertProcType>, 
-            ConvertProcType> tasks(ptr, ptr + w * h, convert);
+            ConvertProcType, Color*> tasks(ptr, ptr + w * h, convert);
         tasks.SpawnAndSync();
     }
 
