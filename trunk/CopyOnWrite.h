@@ -2,7 +2,7 @@
 
 #include "RefCounted.h"
 
-// Dirty hack... Private part class should be called <ClassName>Private and
+// Dirty hack... Private part class should be called Private and
 // implement Clone method.
 
 #define IMPLEMENT_COPY_ON_WRITE(ClassName)                              \
@@ -12,7 +12,7 @@ private:                                                                \
     void MakePrivate()                                                  \
     {                                                                   \
         ASSERT(IsValid());                                              \
-        if (_ptr->GetRefs() == 1)                                       \
+        if (IsPrivate())                                                \
             return;                                                     \
         Private* copy = _ptr->Clone();                                  \
         _ptr->Release();                                                \
@@ -34,4 +34,5 @@ public:                                                                 \
         return *this;                                                   \
     }                                                                   \
     bool IsValid() const {  return _ptr != NULL; }                      \
+    bool IsPrivate() const { ASSERT(IsValid()); return _ptr->GetRefs() == 1; } \
 private:
