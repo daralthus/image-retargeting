@@ -7,7 +7,7 @@ SOURCES += main.cpp
 PRECOMPILED_HEADER = Includes.h
 
 HEADERS += pstdint.h Config.h RefCounted.h CopyOnWrite.h
-HEADERS += Convert.h Accumulator.h TypeTraits.h
+HEADERS += Convert.h Accumulator.h TypeTraits.h Random.h
 
 HEADERS += IO.h
 SOURCES += IO.cpp
@@ -23,3 +23,6 @@ HEADERS += RGB.h Lab.h ColorConversion.h
 HEADERS += Image.h ImageConversion.h
 HEADERS += Scaling.h
 HEADERS += GaussianPyramid.h
+
+HEADERS += NearestNeighborField.h
+SOURCES += NearestNeighborField.cpp
