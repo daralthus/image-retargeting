@@ -1,10 +1,7 @@
 #pragma once
 
-#include "Assert.h"
 #include "Color.h"
 #include "CopyOnWrite.h"
-
-#include <vector>
 
 namespace IRL
 {

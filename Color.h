@@ -1,11 +1,5 @@
 #pragma once
 
-#include <math.h>
-
-#include <string>
-#include <sstream>
-
-#include "pstdint.h"
 #include "Real.h"
 #include "MathTools.h"
 

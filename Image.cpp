@@ -1,5 +1,5 @@
+#include "Includes.h"
 #include "Image.h"
-#include "Config.h"
 #include "Profiler.h"
 #include "Parallel.h"
 

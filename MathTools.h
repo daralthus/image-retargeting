@@ -1,7 +1,5 @@
 #pragma once
 
-#include "pstdint.h"
-
 namespace IRL
 {
     // http://www.codecodex.com/wiki/Calculate_an_integer_square_root#C

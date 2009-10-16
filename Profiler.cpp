@@ -1,9 +1,6 @@
+#include "Includes.h"
 #include "Profiler.h"
-#include "Assert.h"
 #include "Threading.h"
-
-#include <iostream>
-#include <vector>
 
 namespace IRL
 {
