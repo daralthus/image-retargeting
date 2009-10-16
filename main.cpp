@@ -2,6 +2,7 @@
 #include "IO.h"
 #include "Profiler.h"
 #include "GaussianPyramid.h"
+#include "NearestNeighborField.h"
 
 using namespace IRL;
 
@@ -13,22 +14,13 @@ int main(int, char**)
 
     Tools::Profiler profiler("main");
 
-    // Load into RGB8
-    GaussianPyramid<RGB8> pyramid(LoadImage("Test.png"), 5);
-    GaussianPyramid<Color> anotherPyramid;
+    Image<RGB8> source = LoadImage("Test.png");
+    NearestNeighborField<RGB8> nnf(source, 400, 400);
+    nnf.RandomFill();
 
-    {
-        Tools::Profiler profiler("Converters");
-
-        // Convert RGB -> Color
-        Convert(anotherPyramid, pyramid);
-
-        // Convert Color -> RGB
-        Convert(pyramid, anotherPyramid);
-    }
-
-    // Save
-    SaveGaussianPyramid(pyramid, "Test.png");
+    Image<RGB8> vis;
+    Convert(vis, nnf.OffsetField);
+    SaveImage(vis, "Offsets.png");
 
     return 0;
 }
