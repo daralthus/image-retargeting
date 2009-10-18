@@ -10,6 +10,7 @@
 
 namespace IRL
 {
+    template<>
     const Image<RGB8> LoadImage(const std::string& path)
     {
         Tools::Profiler profiler("LoadImage");
@@ -30,6 +31,7 @@ namespace IRL
         return result;
     }
 
+    template<>
     bool SaveImage(const Image<RGB8>& image, const std::string& path)
     {
         Tools::Profiler profiler("SaveImage");
@@ -46,6 +48,7 @@ namespace IRL
         return img.save(QString::fromStdString(path));
     }
 
+    template<>
     bool SaveGaussianPyramid(const GaussianPyramid<RGB8>& pyramid, const std::string& filePath)
     {
         std::string prefix;
