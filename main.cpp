@@ -6,7 +6,8 @@
 
 using namespace IRL;
 
-typedef LabDouble Color;
+// can be RGB8 RGB16 RGBFloat RGBDoulbe Lab8 Lab16 LabFloat LabDouble
+typedef LabDouble Color; 
 
 int main(int, char**)
 {
@@ -14,13 +15,18 @@ int main(int, char**)
 
     Tools::Profiler profiler("main");
 
-    Image<RGB8> source = LoadImage("Test.png");
-    NearestNeighborField<RGB8> nnf(source, 400, 400);
-    nnf.RandomFill();
+    Image<Color> source = LoadImage<Color>("Source.bmp");
+    Image<Color> target = LoadImage<Color>("Source.bmp");
 
-    Image<RGB8> vis;
-    Convert(vis, nnf.OffsetField);
-    SaveImage(vis, "Offsets.png");
+    NearestNeighborField<Color> nnf(source, target);
+    nnf.RandomFill();
+    nnf.Save("Out/0.bmp");
+    nnf.Iteration();
+    nnf.Save("Out/1.bmp");
+    nnf.Iteration();
+    nnf.Save("Out/2.bmp");
+    nnf.Iteration();
+    nnf.Save("Out/3.bmp");
 
     return 0;
 }
