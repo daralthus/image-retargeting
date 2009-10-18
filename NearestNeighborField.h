@@ -64,72 +64,127 @@ namespace IRL
         void Iteration()
         {
             _iteration++;
-            if ((_iteration % 2) == 1)
-                DirectScanOrder();
-            else
-                ReverseScanOrder();
+            Iteration(0, 0, Target.Width(), Target.Height(), (_iteration % 2) == 1);
         }
 
         void Save(const std::string& path)
         {
-            Image<RGB8> vis;
-            Convert(vis, OffsetField);
-            SaveImage(vis, path);
+            SaveImage(OffsetField, path);
         }
 
     private:
-        void DirectScanOrder()
+        void Iteration(int left, int top, int right, int bottom, bool directScanOrder)
+        {
+            if (directScanOrder)
+                DirectScanOrder(left, top, right, bottom);
+            else
+                ReverseScanOrder(left, top, right, bottom);
+        }
+
+        void DirectScanOrder(int left, int top, int right, int bottom)
         {
             Tools::Profiler profiler("DirectScanOrder");
-            for (int32_t x = 1; x < OffsetField.Width(); x++)
+
+            // Top left point is special - nowhere to propagate from,
+            // so do only random search on it
+            if (left == 0 && top == 0)
+                RandomSearch(Point32(left, top));
+
+            int startX = left == 0 ? 1 : left;
+            int startY = top == 0 ? 1 : top;
+
+            // Top most row is also special - only propagation from left occurs
+            if (top == 0)
             {
-                PropagateDownRight(Point32(x, 0));
-                RandomSearch(Point32(x, 0));
+                for (int32_t px = startX; px < right; px++)
+                {
+                    Propagate<-1, true, false>(Point32(px, top));
+                    RandomSearch(Point32(px, top));
+                }
             }
 
-            for (int32_t y = 1; y < OffsetField.Height(); y++)
+            // Left most column is also an exception
+            if (left == 0)
             {
-                for (int32_t x = 0; x < OffsetField.Width(); x++)
+                for (int32_t py = startY; py < bottom; py++)
                 {
-                    PropagateDownRight(Point32(x, y));
-                    RandomSearch(Point32(x, y));
+                    Propagate<-1, false, true>(Point32(left, py));
+                    RandomSearch(Point32(left, py));
+                }
+            }
+
+            // process the rest
+            for (int32_t py = startY; py < bottom; py++)
+            {
+                for (int32_t px = startX; px < right; px++)
+                {
+                    Propagate<-1, true, true>(Point32(px, py));
+                    RandomSearch(Point32(px, py));
                 }
             }
         }
 
-        void ReverseScanOrder()
+        void ReverseScanOrder(int left, int top, int right, int bottom)
         {
-            Tools::Profiler profiler("ReverseScanOrder");
-            int32_t y = OffsetField.Height() - 1;
-            for (int32_t x = OffsetField.Width() - 2; x >= 0; x--)
+            Tools::Profiler profiler("DirectScanOrder");
+
+            // Bottom right point is special - nowhere to propagate from,
+            // so do only random search on it
+            if (right == Target.Width() && bottom == Target.Height())
+                RandomSearch(Point32(right - 1, bottom - 1));
+
+            int startX = (right == Target.Width()) ? right - 2 : right - 1;
+            int startY = (bottom == Target.Height()) ? bottom - 2 : bottom - 1;
+
+            // Bottom most row is also special - only propagation from right occurs
+            if (bottom == Target.Height())
             {
-                PropagateUpLeft(Point32(x, y));
-                RandomSearch(Point32(x, y));
+                for (int32_t px = startX; px >= left; px--)
+                {
+                    Propagate<+1, true, false>(Point32(px, bottom - 1));
+                    RandomSearch(Point32(px, bottom - 1));
+                }
             }
 
-            for (int32_t y = OffsetField.Height() - 2; y >= 0; y--)
+            // Right most column is also an exception
+            if (right == Target.Width())
             {
-                for (int32_t x = OffsetField.Width() - 1; x >= 0; x--)
+                for (int32_t py = startY; py >= top; py--)
                 {
-                    PropagateUpLeft(Point32(x, y));
-                    RandomSearch(Point32(x, y));
+                    Propagate<+1, false, true>(Point32(right - 1, py));
+                    RandomSearch(Point32(right - 1, py));
+                }
+            }
+
+            // process the rest
+            for (int32_t py = startY; py >= top; py--)
+            {
+                for (int32_t px = startX; px >= left; px--)
+                {
+                    Propagate<+1, true, true>(Point32(px, py));
+                    RandomSearch(Point32(px, py));
                 }
             }
         }
 
-        void PropagateDownRight(const Point32& target)
+        template<int Direction, bool LeftAvailable, bool UpAvailable>
+        void Propagate(const Point32& target)
         {
+            // Direction - -1 for direct scan order, +1 for reverse
+            // LeftAvailable == true if caller gaurantees that CheckX<Direction>(target.x) == true
+            // UpAvailable == true if caller gaurantees that CheckY<Direction>(target.y) == true
+
             Point32 best   = target;
             Point32 source = target + f(target);
-            DistanceType bestD = Distance(target, source);
+            DistanceType bestD = Distance<false>(target, source);
 
-            if (target.y != 0)
+            if (LeftAvailable || CheckX<Direction>(target.x))
             {
-                const Point32 pointToTest(target.x, target.y - 1);
+                const Point32 pointToTest(target.x + Direction, target.y);
                 source = target + f(pointToTest);
                 if (Source.IsValidPixelCoordinates(source.x, source.y))
                 {
-                    DistanceType distance = Distance(target, source);
+                    DistanceType distance = Distance<true>(target, source, bestD);
                     if (distance < bestD)
                     {
                         bestD = distance;
@@ -138,13 +193,13 @@ namespace IRL
                 }
             }
 
-            if (target.x != 0)
+            if (UpAvailable || CheckY<Direction>(target.y))
             {
-                const Point32 pointToTest(target.x - 1, target.y);
+                const Point32 pointToTest(target.x, target.y + Direction);
                 source = target + f(pointToTest);
                 if (Source.IsValidPixelCoordinates(source.x, source.y))
                 {
-                    DistanceType distance = Distance(target, source);
+                    DistanceType distance = Distance<true>(target, source, bestD);
                     if (distance < bestD)
                     {
                         bestD = distance;
@@ -156,44 +211,13 @@ namespace IRL
             f(target) = f(best);
         }
 
-        void PropagateUpLeft(const Point32& target)
-        {
-            Point32 best   = target;
-            Point32 source = target + f(target);
-            DistanceType bestD = Distance(target, source);
+        template<int Direction> bool CheckX(int x); // no implementation here
+        template<> inline bool CheckX<-1>(int x) { return x > 0; }
+        template<> inline bool CheckX<+1>(int x) { return x < Target.Width() - 1; }
 
-            if (target.y != Target.Height() - 1)
-            {
-                const Point32 pointToTest(target.x, target.y + 1);
-                source = target + f(pointToTest);
-                if (Source.IsValidPixelCoordinates(source.x, source.y))
-                {
-                    DistanceType distance = Distance(target, source);
-                    if (distance < bestD)
-                    {
-                        bestD = distance;
-                        best = pointToTest;
-                    }
-                }
-            }
-
-            if (target.x != Target.Width() - 1)
-            {
-                const Point32 pointToTest(target.x + 1, target.y);
-                source = target + f(pointToTest);
-                if (Source.IsValidPixelCoordinates(source.x, source.y))
-                {
-                    DistanceType distance = Distance(target, source);
-                    if (distance < bestD)
-                    {
-                        bestD = distance;
-                        best = pointToTest;
-                    }
-                }
-            }
-
-            f(target) = f(best);
-        }
+        template<int Direction> bool CheckY(int x);
+        template<> inline bool CheckY<-1>(int y) { return y > 0; }
+        template<> inline bool CheckY<+1>(int y) { return y < Target.Height() - 1; }
 
         void RandomSearch(const Point32& target)
         {
@@ -206,7 +230,7 @@ namespace IRL
             Point16 offset = f(target);
 
             Point16 best(0, 0);
-            DistanceType bestD = Distance(target, target + offset);
+            DistanceType bestD = Distance<false>(target, target + offset);
 
             while (true)
             {
@@ -215,7 +239,7 @@ namespace IRL
                 Point32 source = target + offset + w;
                 if (Source.IsValidPixelCoordinates(source.x, source.y))
                 {
-                    DistanceType distance = Distance(target, source);
+                    DistanceType distance = Distance<true>(target, source, bestD);
                     if (distance < bestD)
                     {
                         bestD = distance;
@@ -229,12 +253,8 @@ namespace IRL
             f(target) = offset + best;
         }
 
-        Point16& f(const Point32& p)
-        {
-            return OffsetField(p.x, p.y);
-        }
-
-        DistanceType Distance(const Point32& targetPatch, const Point32& sourcePatch)
+        template<bool EarlyTermination>
+        DistanceType Distance(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known = 0)
         {
             const int PatchHalfSize = 3;
 
@@ -247,8 +267,20 @@ namespace IRL
                         Source.PixelWithMirroring(sourcePatch.x, sourcePatch.y),
                         Target.PixelWithMirroring(targetPatch.x, targetPatch.y));
                 }
+                // place it in the outer loop to reduce conditions check count
+                if (EarlyTermination) 
+                {
+                    if (distance > known)
+                        return distance;
+                }
             }
             return distance;
+        }
+
+        // handy shortcut
+        Point16& f(const Point32& p)
+        {
+            return OffsetField(p.x, p.y);
         }
 
     public:
