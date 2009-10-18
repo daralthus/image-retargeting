@@ -9,6 +9,8 @@ namespace IRL
     class Lab
     {
     public:
+        typedef typename TypeTraits<Channel>::LargerType DistanceType;
+
         Channel L;
         Channel a;
         Channel b;
@@ -21,6 +23,13 @@ namespace IRL
             L = c1;
             a = c2;
             b = c3;
+        }
+
+        static DistanceType Distance(const Lab& a, const Lab& b)
+        {
+            return (a.L - b.L)*(a.L - b.L) + 
+                   (a.a - b.a)*(a.a - b.a) + 
+                   (a.b - b.b)*(a.b - b.b);
         }
     };
 
