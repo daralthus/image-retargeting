@@ -9,6 +9,8 @@ namespace IRL
     class RGB
     {
     public:
+        typedef typename TypeTraits<Channel>::LargerType DistanceType;
+
         Channel B;
         Channel G;
         Channel R;
@@ -45,6 +47,13 @@ namespace IRL
         static const RGB FromRGB32(uint32_t color)
         {
             return RGB(color);
+        }
+
+        static DistanceType Distance(const RGB& a, const RGB& b)
+        {
+            return (a.R - b.R)*(a.R - b.R) + 
+                   (a.G - b.G)*(a.G - b.G) + 
+                   (a.B - b.B)*(a.B - b.B);
         }
     };
 
