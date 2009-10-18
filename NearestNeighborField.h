@@ -8,10 +8,12 @@
 #include "Point2D.h"
 #include "IO.h"
 #include "Profiler.h"
+#include "Rectangle.h"
 
 namespace IRL
 {
     const int PatchSize = 7;
+    const int HalfPatchSize = PatchSize / 2;
     const int RandomSearchInvAlpha = 2;
 
     template<class PixelType>
@@ -38,6 +40,16 @@ namespace IRL
             _maxRadius = Source.Width();
             if (Source.Height() > _maxRadius)
                 _maxRadius = Source.Height();
+
+            _sourceRect.Left = HalfPatchSize;
+            _sourceRect.Right = Source.Width() - HalfPatchSize;
+            _sourceRect.Top = HalfPatchSize;
+            _sourceRect.Bottom = Source.Height() - HalfPatchSize;
+
+            _targetRect.Left = HalfPatchSize;
+            _targetRect.Right = Target.Width() - HalfPatchSize;
+            _targetRect.Top = HalfPatchSize;
+            _targetRect.Bottom = Target.Height() - HalfPatchSize;
         }
 
         void RandomFill()
@@ -55,8 +67,8 @@ namespace IRL
             {
                 for (int32_t x = 0; x < OffsetField.Width(); x++)
                 {
-                    int32_t sx = rnd.Uniform<int32_t>(0, w);
-                    int32_t sy = rnd.Uniform<int32_t>(0, h);
+                    int32_t sx = rnd.Uniform<int32_t>(HalfPatchSize, w - HalfPatchSize);
+                    int32_t sy = rnd.Uniform<int32_t>(HalfPatchSize, h - HalfPatchSize);
 
                     OffsetField(x, y).x = (uint16_t)(sx - x);
                     OffsetField(x, y).y = (uint16_t)(sy - y);
@@ -276,16 +288,26 @@ namespace IRL
         template<bool EarlyTermination>
         DistanceType Distance(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known = 0)
         {
-            const int PatchHalfSize = PatchSize / 2;
+            bool s = !_sourceRect.Contains(sourcePatch);
+            bool t = !_targetRect.Contains(targetPatch);
+            if ( s &&  t) return DistanceImpl<EarlyTermination, true,  true>(targetPatch, sourcePatch, known);
+            if ( s && !t) return DistanceImpl<EarlyTermination, true,  false>(targetPatch, sourcePatch, known);
+            if (!s &&  t) return DistanceImpl<EarlyTermination, false, true>(targetPatch, sourcePatch, known);
+            if (!s && !t) return DistanceImpl<EarlyTermination, false, false>(targetPatch, sourcePatch, known);
+            return 0;
+        }
 
+        template<bool EarlyTermination, bool SourceMirroring, bool TargetMirroring>
+        DistanceType DistanceImpl(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known)
+        {
             DistanceType distance = 0;
-            for (int y = -PatchHalfSize; y < PatchHalfSize; y++)
+            for (int y = -HalfPatchSize; y < HalfPatchSize; y++)
             {
-                for (int x = -PatchHalfSize; x < PatchHalfSize; x++)
+                for (int x = -HalfPatchSize; x < HalfPatchSize; x++)
                 {
                     distance += PixelType::Distance(
-                        Source.PixelWithMirroring(sourcePatch.x, sourcePatch.y),
-                        Target.PixelWithMirroring(targetPatch.x, targetPatch.y));
+                            GetPixel<SourceMirroring>(Source, sourcePatch),
+                            GetPixel<TargetMirroring>(Target, targetPatch));
                 }
                 // place it in the outer loop to reduce conditions check count
                 if (EarlyTermination) 
@@ -295,6 +317,17 @@ namespace IRL
                 }
             }
             return distance;
+        }
+
+        template<bool Mirroring>
+        const PixelType& GetPixel(const Image<PixelType>& from, const Point32& pos) const
+        {
+            return from.Pixel(pos.x, pos.y);
+        }
+        template<>
+        const PixelType& GetPixel<true>(const Image<PixelType>& from, const Point32& pos) const
+        {
+            return from.PixelWithMirroring(pos.x, pos.y);
         }
 
         // handy shortcut
@@ -331,5 +364,8 @@ namespace IRL
         Image<CacheType> _cache;
         Random _searchRandom;
         int _iteration;
+
+        Rectangle<int32_t> _sourceRect; // rectangle with allowed source patch centers
+        Rectangle<int32_t> _targetRect; // rectangle with allowed target patch centers
     };
 }
