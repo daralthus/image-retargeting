@@ -6,8 +6,13 @@ namespace IRL
     class Random
     {
     public:
-        Random(uint32_t seed) : _state(seed)
+        explicit Random(uint32_t seed = 0) : _state(seed)
         { }
+
+        void Seed(uint32_t seed) 
+        {
+            _state = seed;
+        }
 
         template<class T>
         const T Uniform(const T min, const T max)
