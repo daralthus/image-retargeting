@@ -7,7 +7,7 @@ SOURCES += main.cpp
 PRECOMPILED_HEADER = Includes.h
 
 HEADERS += pstdint.h Config.h RefCounted.h CopyOnWrite.h
-HEADERS += Convert.h Accumulator.h TypeTraits.h Random.h
+HEADERS += Convert.h Accumulator.h TypeTraits.h Random.h Rectangle.h
 
 HEADERS += IO.h
 SOURCES += IO.cpp
