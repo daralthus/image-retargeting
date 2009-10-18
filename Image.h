@@ -23,6 +23,11 @@ namespace IRL
         PixelType* Data() { MakePrivate(); return &_ptr->Data[0]; }
         const PixelType* Data() const { ASSERT(IsValid()); return &_ptr->Data[0]; }
 
+        bool IsValidPixelCoordinates(int32_t x, int32_t y) const 
+        {
+            return ((x >= 0 && x < Width()) && (y >= 0 && y < Height()));
+        }
+
         PixelType& Pixel(int32_t x, int32_t y)
         {
             ASSERT(IsValid());
@@ -31,6 +36,7 @@ namespace IRL
             MakePrivate();
             return _ptr->Data[x + y * Width()];
         }
+
         const PixelType& Pixel(int32_t x, int32_t y) const
         {
             ASSERT(IsValid());
@@ -42,6 +48,13 @@ namespace IRL
         // more compact operator versions
         PixelType& operator()(int32_t x, int32_t y) { return Pixel(x, y); }
         const PixelType& operator()(int32_t x, int32_t y) const { return Pixel(x, y); }
+
+        const PixelType& PixelWithMirroring(int32_t x, int32_t y) const
+        {
+            x = (x + Width()) % Width();
+            y = (y + Height()) % Height();
+            return Pixel(x, y);
+        }
 
     private:
         // Private shared data
