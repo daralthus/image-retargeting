@@ -11,17 +11,23 @@
 
 namespace IRL
 {
+    const int PatchSize = 7;
+    const int RandomSearchInvAlpha = 2;
+
     template<class PixelType>
     class PixelCache
     {
         typedef typename PixelType::DistanceType DistanceType;
     public:
+        DistanceType Distance;
+        bool HasDistance;
     };
 
     template<class PixelType>
     class NearestNeighborField
     {
         typedef typename PixelType::DistanceType DistanceType;
+        typedef PixelCache<PixelType> CacheType;
 
     public:
         NearestNeighborField(const Image<PixelType>& source, const Image<PixelType>& target)
@@ -57,12 +63,13 @@ namespace IRL
                 }
             }
 
-            memset(_cache.Data(), 0, sizeof(PixelCache<PixelType>) * _cache.Width() * _cache.Height());
+            memset(_cache.Data(), 0, sizeof(CacheType) * _cache.Width() * _cache.Height());
             _searchRandom.Seed(0);
         }
 
         void Iteration()
         {
+            // TODO: make parallel
             _iteration++;
             Iteration(0, 0, Target.Width(), Target.Height(), (_iteration % 2) == 1);
         }
@@ -174,9 +181,10 @@ namespace IRL
             // LeftAvailable == true if caller gaurantees that CheckX<Direction>(target.x) == true
             // UpAvailable == true if caller gaurantees that CheckY<Direction>(target.y) == true
 
+            bool changed   = false;
             Point32 best   = target;
             Point32 source = target + f(target);
-            DistanceType bestD = Distance<false>(target, source);
+            DistanceType bestD = LoadDistance(target);
 
             if (LeftAvailable || CheckX<Direction>(target.x))
             {
@@ -189,6 +197,7 @@ namespace IRL
                     {
                         bestD = distance;
                         best = pointToTest;
+                        changed = true;
                     }
                 }
             }
@@ -204,11 +213,16 @@ namespace IRL
                     {
                         bestD = distance;
                         best = pointToTest;
+                        changed = true;
                     }
                 }
             }
 
-            f(target) = f(best);
+            if (changed)
+            {
+                f(target) = f(best);
+                StoreDistance(target, bestD);
+            }
         }
 
         template<int Direction> bool CheckX(int x); // no implementation here
@@ -221,16 +235,17 @@ namespace IRL
 
         void RandomSearch(const Point32& target)
         {
-            const int32_t InvAlpha = 2;
-
+            // search vector
             int32_t Rx = _searchRandom.Uniform<int32_t>(-65536, 65536);
             int32_t Ry = _searchRandom.Uniform<int32_t>(-65536, 65536);
             
+            // normalized search 
             Point16 w((int16_t)(Rx * _maxRadius / 65536), (int16_t)(Ry * _maxRadius / 65536));
             Point16 offset = f(target);
 
             Point16 best(0, 0);
-            DistanceType bestD = Distance<false>(target, target + offset);
+            DistanceType bestD = LoadDistance(target);
+            bool changed = false;
 
             while (true)
             {
@@ -244,19 +259,24 @@ namespace IRL
                     {
                         bestD = distance;
                         best = w;
+                        changed = true;
                     }
                 }
-                w.x /= InvAlpha;
-                w.y /= InvAlpha;
+                w.x /= RandomSearchInvAlpha;
+                w.y /= RandomSearchInvAlpha;
             }
 
-            f(target) = offset + best;
+            if (changed)
+            {
+                f(target) = offset + best;
+                StoreDistance(target, bestD);
+            }
         }
 
         template<bool EarlyTermination>
         DistanceType Distance(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known = 0)
         {
-            const int PatchHalfSize = 3;
+            const int PatchHalfSize = PatchSize / 2;
 
             DistanceType distance = 0;
             for (int y = -PatchHalfSize; y < PatchHalfSize; y++)
@@ -278,9 +298,27 @@ namespace IRL
         }
 
         // handy shortcut
-        Point16& f(const Point32& p)
+        inline Point16& f(const Point32& p)
         {
             return OffsetField(p.x, p.y);
+        }
+
+        // some caching to reduce computations
+        inline void StoreDistance(const Point32& p, DistanceType distance)
+        {
+            CacheType& cache = _cache.Pixel(p.x, p.y);
+            cache.Distance = distance;
+        }
+
+        inline DistanceType LoadDistance(const Point32& p)
+        {
+            CacheType& cache = _cache.Pixel(p.x, p.y);
+            if (!cache.HasDistance)
+            {
+                cache.HasDistance = true;
+                cache.Distance = Distance<false>(p, p + f(p));
+            }
+            return cache.Distance;
         }
 
     public:
@@ -290,7 +328,7 @@ namespace IRL
 
     private:
         int32_t _maxRadius;
-        Image<PixelCache<PixelType> > _cache;
+        Image<CacheType> _cache;
         Random _searchRandom;
         int _iteration;
     };
