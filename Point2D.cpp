@@ -1,19 +1,19 @@
 #include "Includes.h"
-#include "NearestNeighborField.h"
+#include "Point2D.h"
 
 namespace IRL
 {
-    // enable conversion from Offset to RGB8 for visualization purposes
+    // enable conversion from Point2D to RGB8 for visualization purposes
     template<>
-    void Convert(RGB8& to, const Offset& from)
+    void Convert(RGB8& to, const Point16& from)
     {
         const double Pi = 3.1415926535897932384626433832795;
-        double len = sqrt((double)(from.dx * from.dx + from.dy * from.dy));
-        double dir = (from.dx == 0 ? Pi * 0.5 : atan(abs((double)from.dy / from.dx)));
-        if (from.dx >= 0 && from.dy >= 0) dir += 0;           // I
-        if (from.dx <  0 && from.dy >= 0) dir = Pi - dir;     // II
-        if (from.dx <  0 && from.dy <  0) dir = Pi + dir;     // III
-        if (from.dx >= 0 && from.dy <  0) dir = 2 * Pi - dir; // IV
+        double len = sqrt((double)(from.x * from.x + from.y * from.y));
+        double dir = (from.x == 0 ? Pi * 0.5 : atan(abs((double)from.y / from.x)));
+        if (from.x >= 0 && from.y >= 0) dir += 0;           // I
+        if (from.x <  0 && from.y >= 0) dir = Pi - dir;     // II
+        if (from.x <  0 && from.y <  0) dir = Pi + dir;     // III
+        if (from.x >= 0 && from.y <  0) dir = 2 * Pi - dir; // IV
         dir = dir * 360 / (2 * Pi);
 
         // HSV
