@@ -20,6 +20,12 @@ namespace IRL
             return (T)(Next() * (max - min) / m + min);
         }
 
+        template<class T>
+        const T Uniform(const T max)
+        {
+            return (T)(Next() * max / m);
+        }
+
     private:
         static const uint32_t a = 214013L;
         static const uint32_t c = 2531011L;

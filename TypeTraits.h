@@ -30,7 +30,7 @@ namespace IRL
     template<>
     struct TypeTraits<uint16_t>
     {
-        typedef uint32_t LargerType;
+        typedef uint64_t LargerType;
         static uint16_t MaxValue() { return UINT16_MAX; }
         template<class Type>
         static uint16_t Normalize(Type from, Type minValue, Type maxValue)

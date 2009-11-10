@@ -10,10 +10,29 @@ namespace IRL
     class Point2D
     {
     public:
+        Point2D()
+        { }
+
+        template<class OtherIntType>
+        Point2D(const Point2D<OtherIntType>& other)
+        { 
+            x = other.x;
+            y = other.y;
+        }
+
         Point2D(IntType x, IntType y)
         {
             this->x = x;
             this->y = y;
+        }
+
+        bool operator==(const Point2D& other) const
+        {
+            return x == other.x && y == other.y;
+        }
+        bool operator!=(const Point2D& other) const
+        {
+            return x != other.x || y != other.y;
         }
 
         template<class OtherIntType>

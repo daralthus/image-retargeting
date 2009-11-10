@@ -8,6 +8,7 @@
 // Common STL includes 
 #include <vector>
 #include <list>
+#include <set>
 #include <string>
 #include <sstream>
 #include <iostream>

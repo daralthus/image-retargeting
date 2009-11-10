@@ -18,7 +18,7 @@ namespace IRL
 
         // HSV
         double h = dir;
-        double s = len / 40; // normalized
+        double s = len / 20; // normalized
         double v = 0.8;
 
         if (s > 1.0) s = 1.0;
