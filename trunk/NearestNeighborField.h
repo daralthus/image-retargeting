@@ -15,6 +15,8 @@ namespace IRL
     const int PatchSize = 7;
     const int HalfPatchSize = PatchSize / 2;
     const int RandomSearchInvAlpha = 2;
+    const int RandomSearchLimit = 3;
+    const int ThreadingPatchSize = 4 * PatchSize;
 
     template<class PixelType>
     class PixelCache
@@ -22,7 +24,6 @@ namespace IRL
         typedef typename PixelType::DistanceType DistanceType;
     public:
         DistanceType Distance;
-        bool HasDistance;
     };
 
     template<class PixelType>
@@ -30,16 +31,12 @@ namespace IRL
     {
         typedef typename PixelType::DistanceType DistanceType;
         typedef PixelCache<PixelType> CacheType;
-
     public:
         NearestNeighborField(const Image<PixelType>& source, const Image<PixelType>& target)
             : Source(source), Target(target), 
             OffsetField(target.Width(), target.Height()), _cache(target.Width(), target.Height())
         {
             _iteration = 0;
-            _maxRadius = Source.Width();
-            if (Source.Height() > _maxRadius)
-                _maxRadius = Source.Height();
 
             _sourceRect.Left = HalfPatchSize;
             _sourceRect.Right = Source.Width() - HalfPatchSize;
@@ -50,6 +47,16 @@ namespace IRL
             _targetRect.Right = Target.Width() - HalfPatchSize;
             _targetRect.Top = HalfPatchSize;
             _targetRect.Bottom = Target.Height() - HalfPatchSize;
+
+            _sourceRect1px.Left = HalfPatchSize + 1;
+            _sourceRect1px.Right = Source.Width() - HalfPatchSize - 1;
+            _sourceRect1px.Top = HalfPatchSize + 1;
+            _sourceRect1px.Bottom = Source.Height() - HalfPatchSize - 1;
+
+            _targetRect1px.Left = HalfPatchSize + 1;
+            _targetRect1px.Right = Target.Width() - HalfPatchSize - 1;
+            _targetRect1px.Top = HalfPatchSize + 1;
+            _targetRect1px.Bottom = Target.Height() - HalfPatchSize - 1;
         }
 
         void RandomFill()
@@ -75,15 +82,15 @@ namespace IRL
                 }
             }
 
-            memset(_cache.Data(), 0, sizeof(CacheType) * _cache.Width() * _cache.Height());
             _searchRandom.Seed(0);
+            _iteration = 0;
         }
 
         void Iteration()
         {
-            // TODO: make parallel
+            //TODO: make parallel
+            Iteration(0, 0, Target.Width(), Target.Height(), _iteration);
             _iteration++;
-            Iteration(0, 0, Target.Width(), Target.Height(), (_iteration % 2) == 1);
         }
 
         void Save(const std::string& path)
@@ -92,12 +99,27 @@ namespace IRL
         }
 
     private:
-        void Iteration(int left, int top, int right, int bottom, bool directScanOrder)
+        void Iteration(int left, int top, int right, int bottom, int iteration)
         {
-            if (directScanOrder)
+            if (iteration == 0)
+                PrepareCache(left, top, right, bottom);
+            if ((iteration % 2) == 0)
                 DirectScanOrder(left, top, right, bottom);
             else
                 ReverseScanOrder(left, top, right, bottom);
+        }
+
+        void PrepareCache(int left, int top, int right, int bottom)
+        {
+            Tools::Profiler profiler("PrepareCache");
+            for (int32_t y = top; y < bottom; y++)
+            {
+                for (int32_t x = left; x < right; x++)
+                {
+                    const Point32 p(x, y);
+                    _cache.Pixel(x, y).Distance = Distance<false>(p, p + f(p));
+                }
+            }
         }
 
         void DirectScanOrder(int left, int top, int right, int bottom)
@@ -145,7 +167,7 @@ namespace IRL
 
         void ReverseScanOrder(int left, int top, int right, int bottom)
         {
-            Tools::Profiler profiler("DirectScanOrder");
+            Tools::Profiler profiler("ReverseScanOrder");
 
             // Bottom right point is special - nowhere to propagate from,
             // so do only random search on it
@@ -190,21 +212,24 @@ namespace IRL
         void Propagate(const Point32& target)
         {
             // Direction - -1 for direct scan order, +1 for reverse
-            // LeftAvailable == true if caller gaurantees that CheckX<Direction>(target.x) == true
-            // UpAvailable == true if caller gaurantees that CheckY<Direction>(target.y) == true
+            // LeftAvailable == true if caller guarantees that CheckX<Direction>(target.x) == true
+            // UpAvailable == true if caller guarantees that CheckY<Direction>(target.y) == true
 
             bool changed   = false;
             Point32 best   = target;
             Point32 source = target + f(target);
-            DistanceType bestD = LoadDistance(target);
+            DistanceType bestD = _cache.Pixel(target.x, target.y).Distance;
+            if (bestD == 0)
+                return;
 
             if (LeftAvailable || CheckX<Direction>(target.x))
             {
                 const Point32 pointToTest(target.x + Direction, target.y);
-                source = target + f(pointToTest);
-                if (Source.IsValidPixelCoordinates(source.x, source.y))
+                const Point32 newSource = target + f(pointToTest);
+                if (source != newSource && Source.IsValidPixelCoordinates(newSource.x, newSource.y))
                 {
-                    DistanceType distance = Distance<true>(target, source, bestD);
+                    DistanceType distance = MoveDistanceByDx(pointToTest, Direction);
+                    source = newSource;
                     if (distance < bestD)
                     {
                         bestD = distance;
@@ -214,13 +239,14 @@ namespace IRL
                 }
             }
 
-            if (UpAvailable || CheckY<Direction>(target.y))
+            if (UpAvailable || CheckY<Direction>(target.y) && bestD != 0)
             {
                 const Point32 pointToTest(target.x, target.y + Direction);
-                source = target + f(pointToTest);
-                if (Source.IsValidPixelCoordinates(source.x, source.y))
+                const Point32 newSource = target + f(pointToTest);
+                if (source != newSource && Source.IsValidPixelCoordinates(newSource.x, newSource.y))
                 {
-                    DistanceType distance = Distance<true>(target, source, bestD);
+                    DistanceType distance = MoveDistanceByDy(pointToTest, Direction);
+                    source = newSource;
                     if (distance < bestD)
                     {
                         bestD = distance;
@@ -233,8 +259,126 @@ namespace IRL
             if (changed)
             {
                 f(target) = f(best);
-                StoreDistance(target, bestD);
+                _cache.Pixel(target.x, target.y).Distance = bestD;
             }
+        }
+
+        inline DistanceType MoveDistanceByDx(const Point32& target, int dx)
+        {
+            DistanceType distance = _cache.Pixel(target.x, target.y).Distance;
+            Point32 source = target + f(target);
+            bool s = !_sourceRect1px.Contains(source);
+            bool t = !_targetRect1px.Contains(target);
+            if ( s &&  t) return MoveDistanceByDxImpl<true, true>(dx, target, source, distance);
+            if ( s && !t) return MoveDistanceByDxImpl<true, false>(dx, target, source, distance);
+            if (!s &&  t) return MoveDistanceByDxImpl<false, true>(dx, target, source, distance);
+            if (!s && !t) return MoveDistanceByDxImpl<false, false>(dx, target, source, distance);
+            ASSERT(false);
+            return 0;
+        }
+
+        template<bool SourceMirroring, bool TargetMirroring>
+        inline DistanceType MoveDistanceByDxImpl(int dx, const Point32& target, const Point32& source, DistanceType distance)
+        {
+            if (dx == -1) return MoveDistanceRight<SourceMirroring, TargetMirroring>(target, source, distance);
+            if (dx ==  1) return MoveDistanceLeft<SourceMirroring, TargetMirroring>(target, source, distance);
+            ASSERT(false);
+            return 0;
+        }
+
+        inline DistanceType MoveDistanceByDy(const Point32& target, int dy)
+        {
+            DistanceType distance = _cache.Pixel(target.x, target.y).Distance;
+            Point32 source = target + f(target);
+            bool s = !_sourceRect1px.Contains(source);
+            bool t = !_targetRect1px.Contains(target);
+            if ( s &&  t) return MoveDistanceByDyImpl<true, true>(dy, target, source, distance);
+            if ( s && !t) return MoveDistanceByDyImpl<true, false>(dy, target, source, distance);
+            if (!s &&  t) return MoveDistanceByDyImpl<false, true>(dy, target, source, distance);
+            if (!s && !t) return MoveDistanceByDyImpl<false, false>(dy, target, source, distance);
+            ASSERT(false);
+            return 0;
+        }
+
+        template<bool SourceMirroring, bool TargetMirroring>
+        inline DistanceType MoveDistanceByDyImpl(int dy, const Point32& target, const Point32& source, DistanceType distance)
+        {
+            if (dy == -1) return MoveDistanceUp<SourceMirroring, TargetMirroring>(target, source, distance);
+            if (dy ==  1) return MoveDistanceDown<SourceMirroring, TargetMirroring>(target, source, distance);
+            ASSERT(false);
+            return 0;
+        }
+
+        template<bool SourceMirroring, bool TargetMirroring>
+        inline DistanceType MoveDistanceRight(const Point32& target, const Point32& source, DistanceType distance)
+        {
+            for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
+            {
+                distance -= PixelType::Distance(
+                    Source.GetPixel<SourceMirroring>(source.x - HalfPatchSize, source.y + y),
+                    Target.GetPixel<TargetMirroring>(target.x - HalfPatchSize, target.y + y));
+            }
+            for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
+            {
+                distance += PixelType::Distance(
+                    Source.GetPixel<SourceMirroring>(source.x + HalfPatchSize + 1, source.y + y),
+                    Target.GetPixel<TargetMirroring>(target.x + HalfPatchSize + 1, target.y + y));
+            }
+            return distance;
+        }
+
+        template<bool SourceMirroring, bool TargetMirroring>
+        inline DistanceType MoveDistanceLeft(const Point32& target, const Point32& source, DistanceType distance)
+        {
+            for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
+            {
+                distance -= PixelType::Distance(
+                    Source.GetPixel<SourceMirroring>(source.x + HalfPatchSize, source.y + y),
+                    Target.GetPixel<TargetMirroring>(target.x + HalfPatchSize, target.y + y));
+            }
+            for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
+            {
+                distance += PixelType::Distance(
+                    Source.GetPixel<SourceMirroring>(source.x - HalfPatchSize - 1, source.y + y),
+                    Target.GetPixel<TargetMirroring>(target.x - HalfPatchSize - 1, target.y + y));
+            }
+            return distance;
+        }
+
+        template<bool SourceMirroring, bool TargetMirroring>
+        inline DistanceType MoveDistanceUp(const Point32& target, const Point32& source, DistanceType distance)
+        {
+            for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
+            {
+                distance -= PixelType::Distance(
+                    Source.GetPixel<SourceMirroring>(source.x + x, source.y - HalfPatchSize),
+                    Target.GetPixel<TargetMirroring>(target.x + x, target.y - HalfPatchSize));
+            }
+            for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
+            {
+                distance += PixelType::Distance(
+                    Source.GetPixel<SourceMirroring>(source.x + x, source.y + HalfPatchSize + 1),
+                    Target.GetPixel<TargetMirroring>(target.x + x, target.y + HalfPatchSize + 1));
+            }
+            return distance;
+        }
+
+        template<bool SourceMirroring, bool TargetMirroring>
+        inline DistanceType MoveDistanceDown(const Point32& target, const Point32& source, DistanceType distance)
+        {
+            for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
+            {
+                distance -= PixelType::Distance(
+                    Source.GetPixel<SourceMirroring>(source.x + x, source.y + HalfPatchSize),
+                    Target.GetPixel<TargetMirroring>(target.x + x, target.y + HalfPatchSize));
+            }
+            for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
+            {
+                distance += PixelType::Distance(
+                    Source.GetPixel<SourceMirroring>(source.x + x, source.y - HalfPatchSize - 1),
+                    Target.GetPixel<TargetMirroring>(target.x + x, target.y - HalfPatchSize - 1));
+            }
+            return distance;
         }
 
         template<int Direction> bool CheckX(int x); // no implementation here
@@ -245,43 +389,46 @@ namespace IRL
         template<> inline bool CheckY<-1>(int y) { return y > 0; }
         template<> inline bool CheckY<+1>(int y) { return y < Target.Height() - 1; }
 
-        void RandomSearch(const Point32& target)
+        inline void RandomSearch(const Point32& target)
         {
-            // search vector
-            int32_t Rx = _searchRandom.Uniform<int32_t>(-65536, 65536);
-            int32_t Ry = _searchRandom.Uniform<int32_t>(-65536, 65536);
-            
-            // normalized search 
-            Point16 w((int16_t)(Rx * _maxRadius / 65536), (int16_t)(Ry * _maxRadius / 65536));
             Point16 offset = f(target);
-
-            Point16 best(0, 0);
-            DistanceType bestD = LoadDistance(target);
+            DistanceType bestD = _cache.Pixel(target.x, target.y).Distance;
+            Point32 best(0, 0);
             bool changed = false;
+            if (bestD == 0)
+                return;
 
-            while (true)
+            Point32 min_w = target + offset;
+
+            // uniform random sample
+            int32_t Rx = _searchRandom.Uniform<int32_t>(0, Source.Width());
+            int32_t Ry = _searchRandom.Uniform<int32_t>(0, Source.Height());
+            Point32 w(Rx - min_w.x, Ry - min_w.y);
+
+            int i = 0;
+            while (i < RandomSearchLimit)
             {
                 if (abs(w.x) < 1 && abs(w.y) < 1)
                     break;
-                Point32 source = target + offset + w;
-                if (Source.IsValidPixelCoordinates(source.x, source.y))
+                Point32 source = min_w + w;
+                DistanceType distance = Distance<true>(target, source, bestD);
+                if (distance < bestD)
                 {
-                    DistanceType distance = Distance<true>(target, source, bestD);
-                    if (distance < bestD)
-                    {
-                        bestD = distance;
-                        best = w;
-                        changed = true;
-                    }
+                    bestD = distance;
+                    best = w;
+                    changed = true;
+                    if (bestD == 0)
+                        break;
                 }
                 w.x /= RandomSearchInvAlpha;
                 w.y /= RandomSearchInvAlpha;
+                i++;
             }
 
             if (changed)
             {
-                f(target) = offset + best;
-                StoreDistance(target, bestD);
+                f(target) = offset + Point16((int16_t)best.x, (int16_t)best.y);
+                _cache.Pixel(target.x, target.y).Distance = bestD;
             }
         }
 
@@ -290,8 +437,8 @@ namespace IRL
         {
             bool s = !_sourceRect.Contains(sourcePatch);
             bool t = !_targetRect.Contains(targetPatch);
-            if ( s &&  t) return DistanceImpl<EarlyTermination, true,  true>(targetPatch, sourcePatch, known);
-            if ( s && !t) return DistanceImpl<EarlyTermination, true,  false>(targetPatch, sourcePatch, known);
+            if ( s &&  t) return DistanceImpl<EarlyTermination, true, true>(targetPatch, sourcePatch, known);
+            if ( s && !t) return DistanceImpl<EarlyTermination, true, false>(targetPatch, sourcePatch, known);
             if (!s &&  t) return DistanceImpl<EarlyTermination, false, true>(targetPatch, sourcePatch, known);
             if (!s && !t) return DistanceImpl<EarlyTermination, false, false>(targetPatch, sourcePatch, known);
             return 0;
@@ -301,33 +448,21 @@ namespace IRL
         DistanceType DistanceImpl(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known)
         {
             DistanceType distance = 0;
-            for (int y = -HalfPatchSize; y < HalfPatchSize; y++)
+            for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
             {
-                for (int x = -HalfPatchSize; x < HalfPatchSize; x++)
+                for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
                 {
                     distance += PixelType::Distance(
-                            GetPixel<SourceMirroring>(Source, sourcePatch),
-                            GetPixel<TargetMirroring>(Target, targetPatch));
-                }
-                // place it in the outer loop to reduce conditions check count
-                if (EarlyTermination) 
-                {
-                    if (distance > known)
-                        return distance;
+                            Source.GetPixel<SourceMirroring>(sourcePatch.x + x, sourcePatch.y + y),
+                            Target.GetPixel<TargetMirroring>(targetPatch.x + x, targetPatch.y + y));
+                    if (EarlyTermination) 
+                    {
+                        if (distance > known)
+                            return distance;
+                    }
                 }
             }
             return distance;
-        }
-
-        template<bool Mirroring>
-        const PixelType& GetPixel(const Image<PixelType>& from, const Point32& pos) const
-        {
-            return from.Pixel(pos.x, pos.y);
-        }
-        template<>
-        const PixelType& GetPixel<true>(const Image<PixelType>& from, const Point32& pos) const
-        {
-            return from.PixelWithMirroring(pos.x, pos.y);
         }
 
         // handy shortcut
@@ -336,36 +471,20 @@ namespace IRL
             return OffsetField(p.x, p.y);
         }
 
-        // some caching to reduce computations
-        inline void StoreDistance(const Point32& p, DistanceType distance)
-        {
-            CacheType& cache = _cache.Pixel(p.x, p.y);
-            cache.Distance = distance;
-        }
-
-        inline DistanceType LoadDistance(const Point32& p)
-        {
-            CacheType& cache = _cache.Pixel(p.x, p.y);
-            if (!cache.HasDistance)
-            {
-                cache.HasDistance = true;
-                cache.Distance = Distance<false>(p, p + f(p));
-            }
-            return cache.Distance;
-        }
-
     public:
         const Image<PixelType> Source; // B
         const Image<PixelType> Target; // A
         Image<Point16> OffsetField;
 
     private:
-        int32_t _maxRadius;
         Image<CacheType> _cache;
         Random _searchRandom;
         int _iteration;
 
         Rectangle<int32_t> _sourceRect; // rectangle with allowed source patch centers
         Rectangle<int32_t> _targetRect; // rectangle with allowed target patch centers
+
+        Rectangle<int32_t> _sourceRect1px; // rectangle with allowed source patch centers reduced by 1px from all sizes
+        Rectangle<int32_t> _targetRect1px; // rectangle with allowed target patch centers reduced by 1px from all sizes
     };
 }

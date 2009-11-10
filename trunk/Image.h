@@ -51,9 +51,23 @@ namespace IRL
 
         const PixelType& PixelWithMirroring(int32_t x, int32_t y) const
         {
-            x = (x + Width()) % Width();
-            y = (y + Height()) % Height();
+            if (x < 0) x = 0;
+            if (x >= Width()) x = Width() - 1;
+            if (y < 0) y = 0;
+            if (y >= Height()) y = Height() - 1;
             return Pixel(x, y);
+        }
+
+        template<bool Mirroring>
+        const PixelType& GetPixel(int32_t x, int32_t y) const
+        {
+            return Pixel(x, y);
+        }
+
+        template<>
+        const PixelType& GetPixel<true>(int32_t x, int32_t y) const
+        {
+            return PixelWithMirroring(x, y);
         }
 
     private:
