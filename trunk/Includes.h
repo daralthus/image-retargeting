@@ -22,4 +22,10 @@
 #define ASSERT(param)
 #endif
 
+template<class T>
+const T& Minimum(const T& l, const T& r)
+{
+    return (l < r) ? l : r;
+}
+
 #include "Config.h"

@@ -15,7 +15,7 @@ SOURCES += IO.cpp
 HEADERS += Profiler.h
 SOURCES += Profiler.cpp
 
-HEADERS += Threading.h ThreadingQt.h Parallel.h
+HEADERS += Threading.h ThreadingQt.h Parallel.h Queue.h
 SOURCES += Parallel.cpp
 
 HEADERS += Point2D.h
