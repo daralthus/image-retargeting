@@ -9,7 +9,7 @@ namespace IRL
     namespace Internal
     {
         template<class PixelType>
-        class ScalingTask :
+        class ScaleDownTask :
             public Parallel::Runnable
         {
         public:
@@ -31,8 +31,8 @@ namespace IRL
         };
 
         template<class Kernel, class PixelType>
-        class HScalingTask :
-            public ScalingTask<PixelType>
+        class HScaleDownTask :
+            public ScaleDownTask<PixelType>
         {
         public:
             virtual void Run()
@@ -90,8 +90,8 @@ namespace IRL
         };
 
         template<class Kernel, class PixelType>
-        class VScalingTask :
-            public ScalingTask<PixelType>
+        class VScaleDownTask :
+            public ScaleDownTask<PixelType>
         {
         public:
             virtual void Run()
@@ -161,6 +161,44 @@ namespace IRL
                 return LookUp[i + HalfSize()];
             }
         };
+
+        template<class PixelType>
+        class ScaleUpTask :
+            public Parallel::Runnable
+        {
+        public:
+            struct State
+            {
+                const Image<PixelType>* Src;
+                Image<PixelType>* Dst;
+            };
+            State S;
+            int StartPos;
+            int StopPos;
+        public:
+            void Set(int startPos, int stopPos, State s)
+            {
+                S = s;
+                StartPos = startPos;
+                StopPos = stopPos;
+            }
+
+            virtual void Run()
+            {
+                for (int y = StartPos; y < StopPos; y++)
+                    ProcessLine(y);
+            }
+
+            inline void ProcessLine(int y)
+            {
+                int sy = y / 2;
+                for (int x = 0; x < S.Dst->Width(); x++)
+                {
+                    int sx = x / 2;
+                    S.Dst->Pixel(x, y) = S.Src->Pixel(sx, sy);
+                }
+            }
+        };
     }
 
     template<class PixelType>
@@ -175,23 +213,47 @@ namespace IRL
         int h = src.Height();
 
         Image<PixelType> res(w / 2, h / 2);
-        typename ScalingTask<PixelType>::State state;
+        typename ScaleDownTask<PixelType>::State state;
         state.Src = &src;
         state.Dst = &res;
 
         // horizontal filter
         Parallel::ParallelFor<
-                                HScalingTask<Kernel, PixelType>,
-                                typename ScalingTask<PixelType>::State
+                                HScaleDownTask<Kernel, PixelType>,
+                                typename ScaleDownTask<PixelType>::State
                              > htasks(0, res.Height(), state);
         htasks.SpawnAndSync();
 
         // vertical filter
         Parallel::ParallelFor<
-                                VScalingTask<Kernel, PixelType>,
-                                typename ScalingTask<PixelType>::State
+                                VScaleDownTask<Kernel, PixelType>,
+                                typename ScaleDownTask<PixelType>::State
                              > vtasks(0, res.Width(), state);
         vtasks.SpawnAndSync();
+
+        return res;
+    }
+
+    template<class PixelType>
+    const Image<PixelType> ScaleUp(const Image<PixelType>& src)
+    {
+        using namespace Internal;
+
+        Tools::Profiler profiler("ScaleUp");
+        int w = src.Width();
+        int h = src.Height();
+
+        Image<PixelType> res(w * 2, h * 2);
+        typename ScaleUpTask<PixelType>::State state;
+        state.Src = &src;
+        state.Dst = &res;
+
+        // horizontal filter (nearest-neighbor interpolation)
+        Parallel::ParallelFor<
+            ScaleUpTask<PixelType>,
+            typename ScaleUpTask<PixelType>::State
+        > tasks(0, res.Height(), state);
+        tasks.SpawnAndSync();
 
         return res;
     }
