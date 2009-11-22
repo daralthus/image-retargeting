@@ -11,18 +11,18 @@ typedef RGB8 Color;
 
 int main(int, char**)
 {
-    Parallel::Initialize(2);
+    Parallel::Initialize(4);
 
     Tools::Profiler profiler("main");
 
-    Image<Color> source = LoadImage<Color>("Source.bmp");
-    Image<Color> target = LoadImage<Color>("1Target.bmp");
+    Image<Color> source = LoadImage<Color>("Source.jpg");
+    Image<Color> target = LoadImage<Color>("Target.jpg");
 
     NearestNeighborField<Color> nnf(source, target);
     nnf.RandomFill();
     {
         Tools::Profiler profiler("Main");
-        for (int i = 0; i < 2; i++)
+        for (int i = 0; i < 7; i++)
             nnf.Iteration();
     }
     nnf.Save("Out/Out.bmp");

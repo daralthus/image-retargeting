@@ -9,6 +9,8 @@
 #include "IO.h"
 #include "Profiler.h"
 #include "Rectangle.h"
+#include "Parallel.h"
+#include "Queue.h"
 
 namespace IRL
 {
@@ -16,7 +18,7 @@ namespace IRL
     const int HalfPatchSize = PatchSize / 2;
     const int RandomSearchInvAlpha = 2;
     const int RandomSearchLimit = 3;
-    const int ThreadingPatchSize = 4 * PatchSize;
+    const int SuperPatchSize = 4 * PatchSize;
 
     template<class PixelType>
     class PixelCache
@@ -31,12 +33,125 @@ namespace IRL
     {
         typedef typename PixelType::DistanceType DistanceType;
         typedef PixelCache<PixelType> CacheType;
+
+    private:
+        struct SuperPatch
+        {
+            int Left;
+            int Top;
+            int Right;
+            int Bottom;
+
+            SuperPatch* LeftNeighbor;
+            SuperPatch* TopNeighbor;
+            SuperPatch* RightNeighbor;
+            SuperPatch* BottomNeighbor;
+
+            bool AddedToQueue;
+            bool Processed;
+        };
+
+        class IterationTask :
+            public Parallel::Runnable
+        {
+        public:
+            IterationTask() : _queue(NULL), _owner(NULL), _iteration(0), _lock(NULL)
+            { }
+
+            void Initialize(NearestNeighborField* owner, Queue<SuperPatch>* queue, int iteration, Mutex* lock)
+            {
+                _owner = owner;
+                _queue = queue;
+                _iteration = iteration;
+                _lock = lock;
+            }
+
+            virtual void Run()
+            {
+                while (1)
+                {
+                    SuperPatch* superPatch = _queue->Get();
+                    if (superPatch == NULL)
+                        break; // quit signal
+                    _owner->Iteration(superPatch->Left, superPatch->Top, superPatch->Right, superPatch->Bottom, _iteration);
+                    _lock->Lock();
+                    superPatch->Processed = true;
+                    if ((_iteration % 2) == 0) // direct scan order?
+                    {
+                        VisitRightPatch(superPatch->RightNeighbor);
+                        VisitBottomPatch(superPatch->BottomNeighbor);
+                        if (superPatch->RightNeighbor == NULL && superPatch->BottomNeighbor == NULL)
+                            _queue->Add(NULL); // it was the last patch, send quit signal
+                    } else
+                    {
+                        VisitLeftPatch(superPatch->LeftNeighbor);
+                        VisitTopPatch(superPatch->TopNeighbor);
+                        if (superPatch->LeftNeighbor == NULL && superPatch->TopNeighbor == NULL)
+                            _queue->Add(NULL); // it was the last patch, send quit signal
+                    }
+                    _lock->Unlock();
+                }
+            }
+
+        private:
+            inline void VisitRightPatch(SuperPatch* patch)
+            {
+                if (patch != NULL && !patch->AddedToQueue)
+                {
+                    if (patch->TopNeighbor != NULL && !patch->TopNeighbor->Processed)
+                        return;
+                    patch->AddedToQueue = true;
+                    _queue->Add(patch);
+                }
+            }
+
+            inline void VisitBottomPatch(SuperPatch* patch)
+            {
+                if (patch != NULL && !patch->AddedToQueue)
+                {
+                    if (patch->LeftNeighbor != NULL && !patch->LeftNeighbor->Processed)
+                        return;
+                    patch->AddedToQueue = true;
+                    _queue->Add(patch);
+                }
+            }
+
+            inline void VisitLeftPatch(SuperPatch* patch)
+            {
+                if (patch != NULL && !patch->AddedToQueue)
+                {
+                    if (patch->BottomNeighbor != NULL && !patch->BottomNeighbor->Processed)
+                        return;
+                    patch->AddedToQueue = true;
+                    _queue->Add(patch);
+                }
+            }
+
+            inline void VisitTopPatch(SuperPatch* patch)
+            {
+                if (patch != NULL && !patch->AddedToQueue)
+                {
+                    if (patch->RightNeighbor != NULL && !patch->RightNeighbor->Processed)
+                        return;
+                    patch->AddedToQueue = true;
+                    _queue->Add(patch);
+                }
+            }
+
+            NearestNeighborField* _owner;
+            Queue<SuperPatch>* _queue;
+            int _iteration;
+            Mutex* _lock;
+        };
+
     public:
         NearestNeighborField(const Image<PixelType>& source, const Image<PixelType>& target)
             : Source(source), Target(target), 
             OffsetField(target.Width(), target.Height()), _cache(target.Width(), target.Height())
         {
             _iteration = 0;
+            _topLeftSuperPatch = NULL;
+            _bottomRightSuperPatch = NULL;
 
             _sourceRect.Left = HalfPatchSize;
             _sourceRect.Right = Source.Width() - HalfPatchSize;
@@ -57,11 +172,64 @@ namespace IRL
             _targetRect1px.Right = Target.Width() - HalfPatchSize - 1;
             _targetRect1px.Top = HalfPatchSize + 1;
             _targetRect1px.Bottom = Target.Height() - HalfPatchSize - 1;
+
+            BuildSuperPatches();
+        }
+
+        void BuildSuperPatches()
+        {
+            Tools::Profiler profiler("BuildSuperPatches");
+
+            int w = Target.Width()  / SuperPatchSize + 1;
+            int h = Target.Height() / SuperPatchSize + 1;
+            _superPatches.reserve(w * h);
+            int y = 0;
+            while (y < Target.Height())
+            {
+                w = 0;
+                int x = 0;
+                int bottomLine = Minimum<int>(y + SuperPatchSize, Target.Height());
+                while (x < Target.Width())
+                {
+                    SuperPatch patch;
+                    patch.Left   = x;
+                    patch.Top    = y;
+                    patch.Right  = Minimum<int>(x + SuperPatchSize, Target.Width());
+                    patch.Bottom = bottomLine;
+                    _superPatches.push_back(patch);
+                    x += SuperPatchSize;
+                    w++;
+                }
+                y += SuperPatchSize;
+            }
+            _topLeftSuperPatch = &_superPatches.front();
+            _bottomRightSuperPatch = &_superPatches.back();
+
+            // build interdependencies
+            for (unsigned int i = 0; i < _superPatches.size(); i++)
+            {
+                if (_superPatches[i].Left == 0)
+                    _superPatches[i].LeftNeighbor = NULL;
+                if (_superPatches[i].Right != Target.Width())
+                {
+                    _superPatches[i].RightNeighbor = &_superPatches[i+1];
+                    _superPatches[i+1].LeftNeighbor = &_superPatches[i];
+                } else
+                    _superPatches[i].RightNeighbor = NULL;
+
+                if (_superPatches[i].Top == 0)
+                    _superPatches[i].TopNeighbor = NULL;
+                if (_superPatches[i].Bottom != Target.Height())
+                {
+                    _superPatches[i].BottomNeighbor = &_superPatches[i+w];
+                    _superPatches[i+w].TopNeighbor = &_superPatches[i];
+                } else
+                    _superPatches[i].BottomNeighbor = NULL;
+            }
         }
 
         void RandomFill()
         {
-            // TODO: make parallel?
             ASSERT(Source.IsValid());
             ASSERT(OffsetField.IsValid());
 
@@ -86,10 +254,33 @@ namespace IRL
             _iteration = 0;
         }
 
-        void Iteration()
+        void Iteration(bool parallel = true)
         {
-            //TODO: make parallel
-            Iteration(0, 0, Target.Width(), Target.Height(), _iteration);
+            Tools::Profiler profiler("Iteration");
+            if (!parallel)
+                Iteration(0, 0, Target.Width(), Target.Height(), _iteration);
+            else
+            {
+                _superPatchQueue.Reinitialize();
+                for (unsigned int i = 0; i < _superPatches.size(); i++)
+                {
+                    _superPatches[i].AddedToQueue = false;
+                    _superPatches[i].Processed = false;
+                }
+                if ((_iteration % 2) == 0)
+                {
+                    _topLeftSuperPatch->AddedToQueue = true;
+                    _superPatchQueue.Add(_topLeftSuperPatch); // direct scan order
+                } else
+                {
+                    _bottomRightSuperPatch->AddedToQueue = true;
+                    _superPatchQueue.Add(_bottomRightSuperPatch); // reverse scan order
+                }
+                Parallel::TaskGroup<IterationTask> workers;
+                for (int i = 0; i < workers.Count(); i++)
+                    workers[i].Initialize(this, &_superPatchQueue, _iteration, &_lock);
+                workers.SpawnAndSync();
+            }
             _iteration++;
         }
 
@@ -111,7 +302,6 @@ namespace IRL
 
         void PrepareCache(int left, int top, int right, int bottom)
         {
-            Tools::Profiler profiler("PrepareCache");
             for (int32_t y = top; y < bottom; y++)
             {
                 for (int32_t x = left; x < right; x++)
@@ -124,8 +314,6 @@ namespace IRL
 
         void DirectScanOrder(int left, int top, int right, int bottom)
         {
-            Tools::Profiler profiler("DirectScanOrder");
-
             // Top left point is special - nowhere to propagate from,
             // so do only random search on it
             if (left == 0 && top == 0)
@@ -167,8 +355,6 @@ namespace IRL
 
         void ReverseScanOrder(int left, int top, int right, int bottom)
         {
-            Tools::Profiler profiler("ReverseScanOrder");
-
             // Bottom right point is special - nowhere to propagate from,
             // so do only random search on it
             if (right == Target.Width() && bottom == Target.Height())
@@ -486,5 +672,11 @@ namespace IRL
 
         Rectangle<int32_t> _sourceRect1px; // rectangle with allowed source patch centers reduced by 1px from all sizes
         Rectangle<int32_t> _targetRect1px; // rectangle with allowed target patch centers reduced by 1px from all sizes
+
+        Queue<SuperPatch> _superPatchQueue;
+        std::vector<SuperPatch> _superPatches;
+        SuperPatch* _topLeftSuperPatch;
+        SuperPatch* _bottomRightSuperPatch;
+        Mutex _lock;
     };
 }
