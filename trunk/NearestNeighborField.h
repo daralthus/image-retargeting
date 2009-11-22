@@ -254,6 +254,30 @@ namespace IRL
             _iteration = 0;
         }
 
+        void SmoothFill()
+        {
+            ASSERT(Source.IsValid());
+            ASSERT(OffsetField.IsValid());
+
+            const int32_t w = Source.Width();
+            const int32_t h = Source.Height();
+
+            for (int32_t y = 0; y < OffsetField.Height(); y++)
+            {
+                for (int32_t x = 0; x < OffsetField.Width(); x++)
+                {
+                    int32_t sx = x * w / OffsetField.Width();
+                    int32_t sy = y * h / OffsetField.Height();
+
+                    OffsetField(x, y).x = (uint16_t)(sx - x);
+                    OffsetField(x, y).y = (uint16_t)(sy - y);
+                }
+            }
+
+            _searchRandom.Seed(0);
+            _iteration = 0;
+        }
+
         void Iteration(bool parallel = true)
         {
             Tools::Profiler profiler("Iteration");
