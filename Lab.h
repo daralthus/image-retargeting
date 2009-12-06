@@ -9,6 +9,7 @@ namespace IRL
     class Lab
     {
     public:
+        typedef Channel ChannelType;
         typedef typename TypeTraits<Channel>::LargerType DistanceType;
 
         Channel L;

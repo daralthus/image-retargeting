@@ -3,6 +3,7 @@
 #include "Convert.h"
 #include "RGB.h"
 #include "Lab.h"
+#include "Alpha.h"
 
 namespace IRL
 {
@@ -21,6 +22,10 @@ namespace IRL
     // Lab <-> Lab
     template<class ChannelTo, class ChannelFrom>
     void Convert(Lab<ChannelTo>& to, const Lab<ChannelFrom>& from);
+
+    // Alpha <-> Alpha
+    template<class ChannelTo, class ChannelFrom>
+    void Convert(Alpha<ChannelTo>& to, const Alpha<ChannelFrom>& from);
 }
 
 // implementation file

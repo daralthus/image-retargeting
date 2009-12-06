@@ -11,6 +11,14 @@ namespace IRL
     }
 
     template<class PixelType>
+    const ImageWithMask<PixelType> LoadImageWithMask(const std::string& path)
+    {
+        ImageWithMask<PixelType> result;
+        Convert(result, LoadImageWithMask<RGB8>(path));
+        return result;
+    }
+
+    template<class PixelType>
     bool SaveImage(const Image<PixelType>& image, const std::string& path)
     {
         Image<RGB8> result;

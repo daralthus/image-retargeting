@@ -21,9 +21,9 @@ SOURCES += Parallel.cpp
 HEADERS += Point2D.h
 SOURCES += Point2D.cpp
 
-HEADERS += RGB.h Lab.h ColorConversion.h ColorConversion.inl
+HEADERS += RGB.h Lab.h Alpha.h ColorConversion.h ColorConversion.inl
 
-HEADERS += Image.h ImageConversion.h Image.inl ImageConversion.inl
+HEADERS += Image.h ImageConversion.h ImageWithMask.h Image.inl ImageConversion.inl
 HEADERS += Scaling.h Scaling.inl
 HEADERS += GaussianPyramid.h GaussianPyramid.inl
 

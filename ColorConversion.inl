@@ -119,4 +119,10 @@ namespace IRL
         to.a = TypeTraits<ChannelTo>::Normalize(from.a, (ChannelFrom)0, TypeTraits<ChannelFrom>::MaxValue());
         to.b = TypeTraits<ChannelTo>::Normalize(from.b, (ChannelFrom)0, TypeTraits<ChannelFrom>::MaxValue());
     }
+
+    template<class ChannelTo, class ChannelFrom>
+    void Convert(Alpha<ChannelTo>& to, const Alpha<ChannelFrom>& from)
+    {
+        to.A = TypeTraits<ChannelTo>::Normalize(from.A, (ChannelFrom)0, TypeTraits<ChannelFrom>::MaxValue());
+    }
 }

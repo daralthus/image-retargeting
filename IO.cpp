@@ -31,6 +31,31 @@ namespace IRL
         return result;
     }
 
+    template<> 
+    const ImageWithMask<RGB8> LoadImageWithMask(const std::string& path)
+    {
+        Tools::Profiler profiler("LoadImageWithMask");
+        QImage img(QString::fromStdString(path));
+        if (img.isNull())
+            return ImageWithMask<RGB8>();
+        Image<RGB8> result(img.width(), img.height());
+        Image<Alpha8> mask(img.width(), img.height());
+        img.convertToFormat(QImage::Format_ARGB32);
+        uint32_t* rgb = (uint32_t*)img.bits();
+        RGB8* color = result.Data();
+        Alpha8* alpha = mask.Data();
+        RGB8* end = color + img.width() * img.height();
+        while (color != end)
+        {
+            *color = RGB8::FromRGB32(*rgb);
+            *alpha = Alpha8::FromRGB32(*rgb);
+            ++color;
+            ++rgb;
+            ++alpha;
+        }
+        return ImageWithMask<RGB8>(result, mask);
+    }
+
     template<>
     bool SaveImage(const Image<RGB8>& image, const std::string& path)
     {
