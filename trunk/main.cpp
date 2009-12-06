@@ -3,6 +3,7 @@
 #include "Profiler.h"
 #include "GaussianPyramid.h"
 #include "NearestNeighborField.h"
+#include "ImageWithMask.h"
 
 using namespace IRL;
 
@@ -15,17 +16,17 @@ int main(int, char**)
 
     Tools::Profiler profiler("main");
 
-    Image<Color> source = LoadImage<Color>("Source.jpg");
-    Image<Color> target = LoadImage<Color>("Target.jpg");
+    ImageWithMask<Color> image = LoadImageWithMask<Color>("Source.png");
 
-    NearestNeighborField<Color> nnf(source, target);
-    nnf.RandomFill();
-    {
-        Tools::Profiler profiler("Main");
-        for (int i = 0; i < 7; i++)
-            nnf.Iteration();
-    }
-    nnf.Save("Out/Out.bmp");
+    NNF<Color, true> nnf;
 
+    nnf.Source = image.Image;
+    nnf.SourceMask = image.Mask;
+    nnf.Target = image.Image;
+
+    for (int i = 0; i < 10; i++)
+        nnf.Iteration();
+
+    nnf.Save("Out/NNF.bmp");
     return 0;
 }

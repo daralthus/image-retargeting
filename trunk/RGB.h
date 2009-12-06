@@ -56,6 +56,11 @@ namespace IRL
                    (a.G - b.G)*(a.G - b.G) + 
                    (a.B - b.B)*(a.B - b.B);
         }
+
+        static DistanceType DistanceUpperBound()
+        {
+            return 3 * TypeTraits<Channel>::MaxValue() * TypeTraits<Channel>::MaxValue() + 1; 
+        }
     };
 
     typedef RGB<uint8_t>  RGB8;

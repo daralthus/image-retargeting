@@ -2,35 +2,38 @@
 
 #include "Image.h"
 #include "Convert.h"
-#include "RGB.h"
 #include "Random.h"
 #include "TypeTraits.h"
 #include "Point2D.h"
 #include "Rectangle.h"
 #include "Parallel.h"
 #include "Queue.h"
+#include "Alpha.h"
 
 namespace IRL
 {
     // NNF stands for NearestNeighborField
-    template<class PixelType>
+    template<class PixelType, bool UseSourceMask>
     class NNF
     {
         typedef typename PixelType::DistanceType DistanceType;
 
     public:
-        const Image<PixelType> Source; // B
-        const Image<PixelType> Target; // A
-        Image<Point16> OffsetField;    // Result of the algorithm's work
+        // Possible types of initial NNF field
+        enum InitialFieldType
+        {
+            RandomField, 
+            SmoothField
+        };
+
+        Image<PixelType> Source;     // B
+        Image<Alpha8>    SourceMask; // which pixel from source is allowed to use
+        Image<PixelType> Target;     // A
+        Image<Point16> OffsetField; // Result of the algorithm's work
+        InitialFieldType InitialOffsetField;
 
     public:
-        // Initialized algorithm with source and target images.
-        NNF(const Image<PixelType>& source, const Image<PixelType>& target);
-
-        // Initializes initial NNF with random values
-        void RandomFill();
-        // Initialized initial NNF with values that arise when interpolate from target to source
-        void SmoothFill();
+        NNF();
 
         // Make one iteration of the algorithm.
         void Iteration(bool parallel = true);
@@ -38,13 +41,23 @@ namespace IRL
         void Save(const std::string& path);
 
     private:
+        // Initializes the algorithm before first iteration.
+        void Initialize();
+        // Initializes initial NNF with random values
+        void RandomFill();
+        // Initialized initial NNF with values that arise when interpolate from target to source
+        void SmoothFill();
+
+        // If pixel gets in masked zone, tries to move it out of it
+        inline void CheckThatNotMasked(int32_t& sx, int32_t& sy);
+
         // Fills _superPatches vector
         void BuildSuperPatches();
+        // Fills _cache variable with initial value
+        void PrepareCache(int left, int top, int right, int bottom);
 
         // Sequential complete iteration over target image's region
         void Iteration(int left, int top, int right, int bottom, int iteration);
-        // Fills _cache variable with initial value
-        void PrepareCache(int left, int top, int right, int bottom);
 
         // Perform direct scan order step over target image's region
         void DirectScanOrder(int left, int top, int right, int bottom);
@@ -95,6 +108,10 @@ namespace IRL
         // Support method for Distance
         template<bool EarlyTermination, bool SourceMirroring, bool TargetMirroring>
         DistanceType DistanceImpl(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known);
+
+        // Return distance between pixels
+        template<bool SourceMirroring, bool TargetMirroring>
+        DistanceType PixelDistance(int sx, int sy, int tx, int ty);
 
         // handy shortcut
         inline Point16& f(const Point32& p) { return OffsetField(p.x, p.y); }

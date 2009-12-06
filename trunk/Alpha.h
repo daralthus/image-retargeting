@@ -22,6 +22,11 @@ namespace IRL
             A = a;
         }
 
+        bool IsMasked() const
+        {
+            return A < TypeTraits<Channel>::MaxValue() / 2;
+        }
+
         static const Alpha FromRGB32(uint32_t color)
         {
             int Ab = (color & 0xff000000) >> 24;

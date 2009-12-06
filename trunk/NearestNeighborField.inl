@@ -13,13 +13,13 @@ namespace IRL
     //////////////////////////////////////////////////////////////////////////
     // IterationTask implementation
 
-    template<class PixelType>
-    NNF<PixelType>::IterationTask::IterationTask() : 
+    template<class PixelType, bool UseSourceMask>
+    NNF<PixelType, UseSourceMask>::IterationTask::IterationTask() : 
     _queue(NULL), _owner(NULL), _iteration(0), _lock(NULL)
     { }
 
-    template<class PixelType>
-    void NNF<PixelType>::IterationTask::Initialize(NNF* owner, 
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::IterationTask::Initialize(NNF* owner, 
         Queue<SuperPatch>* queue, int iteration, Mutex* lock)
     {
         _owner = owner;
@@ -28,8 +28,8 @@ namespace IRL
         _lock = lock;
     }
 
-    template<class PixelType>
-    void NNF<PixelType>::IterationTask::Run()
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::IterationTask::Run()
     {
         while (1)
         {
@@ -56,8 +56,8 @@ namespace IRL
         }
     }
 
-    template<class PixelType>
-    inline void NNF<PixelType>::IterationTask::VisitRightPatch(SuperPatch* patch)
+    template<class PixelType, bool UseSourceMask>
+    inline void NNF<PixelType, UseSourceMask>::IterationTask::VisitRightPatch(SuperPatch* patch)
     {
         if (patch != NULL && !patch->AddedToQueue)
         {
@@ -68,8 +68,8 @@ namespace IRL
         }
     }
 
-    template<class PixelType>
-    inline void NNF<PixelType>::IterationTask::VisitBottomPatch(SuperPatch* patch)
+    template<class PixelType, bool UseSourceMask>
+    inline void NNF<PixelType, UseSourceMask>::IterationTask::VisitBottomPatch(SuperPatch* patch)
     {
         if (patch != NULL && !patch->AddedToQueue)
         {
@@ -80,8 +80,8 @@ namespace IRL
         }
     }
 
-    template<class PixelType>
-    inline void NNF<PixelType>::IterationTask::VisitLeftPatch(SuperPatch* patch)
+    template<class PixelType, bool UseSourceMask>
+    inline void NNF<PixelType, UseSourceMask>::IterationTask::VisitLeftPatch(SuperPatch* patch)
     {
         if (patch != NULL && !patch->AddedToQueue)
         {
@@ -92,8 +92,8 @@ namespace IRL
         }
     }
 
-    template<class PixelType>
-    inline void NNF<PixelType>::IterationTask::VisitTopPatch(SuperPatch* patch)
+    template<class PixelType, bool UseSourceMask>
+    inline void NNF<PixelType, UseSourceMask>::IterationTask::VisitTopPatch(SuperPatch* patch)
     {
         if (patch != NULL && !patch->AddedToQueue)
         {
@@ -107,13 +107,29 @@ namespace IRL
     //////////////////////////////////////////////////////////////////////////
     // NNF implementation
 
-    template<class PixelType>
-    NNF<PixelType>::NNF(const Image<PixelType>& source, const Image<PixelType>& target) :
-        Source(source), Target(target), OffsetField(target.Width(), target.Height()), _cache(target.Width(), target.Height())
+    template<class PixelType, bool UseSourceMask>
+    NNF<PixelType, UseSourceMask>::NNF()
     {
+        InitialOffsetField = SmoothField;
         _iteration = 0;
         _topLeftSuperPatch = NULL;
         _bottomRightSuperPatch = NULL;
+    }
+
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::Initialize()
+    {
+        ASSERT(Source.IsValid());
+        ASSERT(Target.IsValid());
+
+        if (UseSourceMask)
+        {
+            ASSERT(SourceMask.IsValid());
+            ASSERT((Source.Width() == SourceMask.Width() && Source.Height() == SourceMask.Height()));
+        } 
+
+        OffsetField = Image<Point16>(Target.Width(), Target.Height());
+        _cache = Image<DistanceType>(Target.Width(), Target.Height());
 
         _sourceRect.Left = HalfPatchSize;
         _sourceRect.Right = Source.Width() - HalfPatchSize;
@@ -136,10 +152,24 @@ namespace IRL
         _targetRect1px.Bottom = Target.Height() - HalfPatchSize - 1;
 
         BuildSuperPatches();
+
+        switch (InitialOffsetField)
+        {
+            case RandomField:
+                RandomFill();
+            break;
+            case SmoothField:
+                SmoothFill();
+            break;
+            default:
+                ASSERT(false);
+        }
+        Save("Initial.bmp");
+        _searchRandom.Seed(0);
     }
 
-    template<class PixelType>
-    void NNF<PixelType>::BuildSuperPatches()
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::BuildSuperPatches()
     {
         Tools::Profiler profiler("BuildSuperPatches");
 
@@ -191,13 +221,13 @@ namespace IRL
         }
     }
 
-    template<class PixelType>
-    void NNF<PixelType>::RandomFill()
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::RandomFill()
     {
         ASSERT(Source.IsValid());
         ASSERT(OffsetField.IsValid());
 
-        Random rnd(0);
+        Random rnd(clock());
 
         const int32_t w = Source.Width();
         const int32_t h = Source.Height();
@@ -209,17 +239,16 @@ namespace IRL
                 int32_t sx = rnd.Uniform<int32_t>(HalfPatchSize, w - HalfPatchSize);
                 int32_t sy = rnd.Uniform<int32_t>(HalfPatchSize, h - HalfPatchSize);
 
+                CheckThatNotMasked(sx, sy);
+
                 OffsetField(x, y).x = (uint16_t)(sx - x);
                 OffsetField(x, y).y = (uint16_t)(sy - y);
             }
         }
-
-        _searchRandom.Seed(0);
-        _iteration = 0;
     }
 
-    template<class PixelType>
-    void NNF<PixelType>::SmoothFill()
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::SmoothFill()
     {
         ASSERT(Source.IsValid());
         ASSERT(OffsetField.IsValid());
@@ -233,19 +262,35 @@ namespace IRL
             {
                 int32_t sx = x * w / OffsetField.Width();
                 int32_t sy = y * h / OffsetField.Height();
+                
+                CheckThatNotMasked(sx, sy);
 
                 OffsetField(x, y).x = (uint16_t)(sx - x);
                 OffsetField(x, y).y = (uint16_t)(sy - y);
             }
         }
-
-        _searchRandom.Seed(0);
-        _iteration = 0;
     }
 
-    template<class PixelType>
-    void NNF<PixelType>::Iteration(bool parallel = true)
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::CheckThatNotMasked(int32_t& sx, int32_t& sy)
     {
+        if (!UseSourceMask)
+            return;
+        int i = 0;
+        while (SourceMask(sx, sy).IsMasked() && i < 3)
+        {
+            sx = _searchRandom.Uniform(0, int(Source.Width()));
+            sy = _searchRandom.Uniform(0, int(Source.Height()));
+            i++;
+        }
+    }
+
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::Iteration(bool parallel = true)
+    {
+        if (_iteration == 0)
+            Initialize();
+
         Tools::Profiler profiler("Iteration");
         if (!parallel)
             Iteration(0, 0, Target.Width(), Target.Height(), _iteration);
@@ -274,14 +319,14 @@ namespace IRL
         _iteration++;
     }
 
-    template<class PixelType>
-    void NNF<PixelType>::Save(const std::string& path)
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::Save(const std::string& path)
     {
         SaveImage(OffsetField, path);
     }
 
-    template<class PixelType>
-    void NNF<PixelType>::Iteration(int left, int top, int right, int bottom, int iteration)
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::Iteration(int left, int top, int right, int bottom, int iteration)
     {
         if (iteration == 0)
             PrepareCache(left, top, right, bottom);
@@ -291,8 +336,8 @@ namespace IRL
             ReverseScanOrder(left, top, right, bottom);
     }
 
-    template<class PixelType>
-    void NNF<PixelType>::PrepareCache(int left, int top, int right, int bottom)
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::PrepareCache(int left, int top, int right, int bottom)
     {
         for (int32_t y = top; y < bottom; y++)
         {
@@ -304,8 +349,8 @@ namespace IRL
         }
     }
 
-    template<class PixelType>
-    void NNF<PixelType>::DirectScanOrder(int left, int top, int right, int bottom)
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::DirectScanOrder(int left, int top, int right, int bottom)
     {
         // Top left point is special - nowhere to propagate from,
         // so do only random search on it
@@ -346,8 +391,8 @@ namespace IRL
         }
     }
 
-    template<class PixelType>
-    void NNF<PixelType>::ReverseScanOrder(int left, int top, int right, int bottom)
+    template<class PixelType, bool UseSourceMask>
+    void NNF<PixelType, UseSourceMask>::ReverseScanOrder(int left, int top, int right, int bottom)
     {
         // Bottom right point is special - nowhere to propagate from,
         // so do only random search on it
@@ -388,9 +433,9 @@ namespace IRL
         }
     }
 
-    template<class PixelType>
+    template<class PixelType, bool UseSourceMask>
     template<int Direction, bool LeftAvailable, bool UpAvailable>
-    void NNF<PixelType>::Propagate(const Point32& target)
+    void NNF<PixelType, UseSourceMask>::Propagate(const Point32& target)
     {
         // Direction - -1 for direct scan order, +1 for reverse
         // LeftAvailable == true if caller guarantees that CheckX<Direction>(target.x) == true
@@ -444,8 +489,8 @@ namespace IRL
         }
     }
 
-    template<class PixelType>
-    inline typename NNF<PixelType>::DistanceType NNF<PixelType>::MoveDistanceByDx(const Point32& target, int dx)
+    template<class PixelType, bool UseSourceMask>
+    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceByDx(const Point32& target, int dx)
     {
         DistanceType distance = _cache.Pixel(target.x, target.y);
         Point32 source = target + f(target);
@@ -459,9 +504,9 @@ namespace IRL
         return 0;
     }
 
-    template<class PixelType>
+    template<class PixelType, bool UseSourceMask>
     template<bool SourceMirroring, bool TargetMirroring>
-    inline typename NNF<PixelType>::DistanceType NNF<PixelType>::MoveDistanceByDxImpl(int dx, const Point32& target, const Point32& source, DistanceType distance)
+    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceByDxImpl(int dx, const Point32& target, const Point32& source, DistanceType distance)
     {
         if (dx == -1) return MoveDistanceRight<SourceMirroring, TargetMirroring>(target, source, distance);
         if (dx ==  1) return MoveDistanceLeft<SourceMirroring, TargetMirroring>(target, source, distance);
@@ -469,8 +514,8 @@ namespace IRL
         return 0;
     }
 
-    template<class PixelType>
-    inline typename NNF<PixelType>::DistanceType NNF<PixelType>::MoveDistanceByDy(const Point32& target, int dy)
+    template<class PixelType, bool UseSourceMask>
+    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceByDy(const Point32& target, int dy)
     {
         DistanceType distance = _cache.Pixel(target.x, target.y);
         Point32 source = target + f(target);
@@ -484,9 +529,9 @@ namespace IRL
         return 0;
     }
 
-    template<class PixelType>
+    template<class PixelType, bool UseSourceMask>
     template<bool SourceMirroring, bool TargetMirroring>
-    inline typename NNF<PixelType>::DistanceType NNF<PixelType>::MoveDistanceByDyImpl(int dy, const Point32& target, const Point32& source, DistanceType distance)
+    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceByDyImpl(int dy, const Point32& target, const Point32& source, DistanceType distance)
     {
         if (dy == -1) return MoveDistanceUp<SourceMirroring, TargetMirroring>(target, source, distance);
         if (dy ==  1) return MoveDistanceDown<SourceMirroring, TargetMirroring>(target, source, distance);
@@ -494,84 +539,84 @@ namespace IRL
         return 0;
     }
 
-    template<class PixelType>
+    template<class PixelType, bool UseSourceMask>
     template<bool SourceMirroring, bool TargetMirroring>
-    inline typename NNF<PixelType>::DistanceType NNF<PixelType>::MoveDistanceRight(const Point32& target, const Point32& source, DistanceType distance)
+    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceRight(const Point32& target, const Point32& source, DistanceType distance)
     {
         for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
         {
-            distance -= PixelType::Distance(
-                Source.GetPixel<SourceMirroring>(source.x - HalfPatchSize, source.y + y),
-                Target.GetPixel<TargetMirroring>(target.x - HalfPatchSize, target.y + y));
+            distance -= PixelDistance<SourceMirroring, TargetMirroring>(
+                source.x - HalfPatchSize, source.y + y,
+                target.x - HalfPatchSize, target.y + y);
         }
         for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
         {
-            distance += PixelType::Distance(
-                Source.GetPixel<SourceMirroring>(source.x + HalfPatchSize + 1, source.y + y),
-                Target.GetPixel<TargetMirroring>(target.x + HalfPatchSize + 1, target.y + y));
+            distance += PixelDistance<SourceMirroring, TargetMirroring>(
+                source.x + HalfPatchSize + 1, source.y + y,
+                target.x + HalfPatchSize + 1, target.y + y);
         }
         return distance;
     }
 
-    template<class PixelType>
+    template<class PixelType, bool UseSourceMask>
     template<bool SourceMirroring, bool TargetMirroring>
-    inline typename NNF<PixelType>::DistanceType NNF<PixelType>::MoveDistanceLeft(const Point32& target, const Point32& source, DistanceType distance)
+    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceLeft(const Point32& target, const Point32& source, DistanceType distance)
     {
         for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
         {
-            distance -= PixelType::Distance(
-                Source.GetPixel<SourceMirroring>(source.x + HalfPatchSize, source.y + y),
-                Target.GetPixel<TargetMirroring>(target.x + HalfPatchSize, target.y + y));
+            distance -= PixelDistance<SourceMirroring, TargetMirroring>(
+                source.x + HalfPatchSize, source.y + y,
+                target.x + HalfPatchSize, target.y + y);
         }
         for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
         {
-            distance += PixelType::Distance(
-                Source.GetPixel<SourceMirroring>(source.x - HalfPatchSize - 1, source.y + y),
-                Target.GetPixel<TargetMirroring>(target.x - HalfPatchSize - 1, target.y + y));
+            distance += PixelDistance<SourceMirroring, TargetMirroring>(
+                source.x - HalfPatchSize - 1, source.y + y,
+                target.x - HalfPatchSize - 1, target.y + y);
         }
         return distance;
     }
 
-    template<class PixelType>
+    template<class PixelType, bool UseSourceMask>
     template<bool SourceMirroring, bool TargetMirroring>
-    inline typename NNF<PixelType>::DistanceType NNF<PixelType>::MoveDistanceUp(const Point32& target, const Point32& source, DistanceType distance)
+    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceUp(const Point32& target, const Point32& source, DistanceType distance)
     {
         for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
         {
-            distance -= PixelType::Distance(
-                Source.GetPixel<SourceMirroring>(source.x + x, source.y - HalfPatchSize),
-                Target.GetPixel<TargetMirroring>(target.x + x, target.y - HalfPatchSize));
+            distance -= PixelDistance<SourceMirroring, TargetMirroring>(
+                source.x + x, source.y - HalfPatchSize,
+                target.x + x, target.y - HalfPatchSize);
         }
         for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
         {
-            distance += PixelType::Distance(
-                Source.GetPixel<SourceMirroring>(source.x + x, source.y + HalfPatchSize + 1),
-                Target.GetPixel<TargetMirroring>(target.x + x, target.y + HalfPatchSize + 1));
+            distance += PixelDistance<SourceMirroring, TargetMirroring>(
+                source.x + x, source.y + HalfPatchSize + 1,
+                target.x + x, target.y + HalfPatchSize + 1);
         }
         return distance;
     }
 
-    template<class PixelType>
+    template<class PixelType, bool UseSourceMask>
     template<bool SourceMirroring, bool TargetMirroring>
-    inline typename NNF<PixelType>::DistanceType NNF<PixelType>::MoveDistanceDown(const Point32& target, const Point32& source, DistanceType distance)
+    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceDown(const Point32& target, const Point32& source, DistanceType distance)
     {
         for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
         {
-            distance -= PixelType::Distance(
-                Source.GetPixel<SourceMirroring>(source.x + x, source.y + HalfPatchSize),
-                Target.GetPixel<TargetMirroring>(target.x + x, target.y + HalfPatchSize));
+            distance -= PixelDistance<SourceMirroring, TargetMirroring>(
+                source.x + x, source.y + HalfPatchSize,
+                target.x + x, target.y + HalfPatchSize);
         }
         for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
         {
-            distance += PixelType::Distance(
-                Source.GetPixel<SourceMirroring>(source.x + x, source.y - HalfPatchSize - 1),
-                Target.GetPixel<TargetMirroring>(target.x + x, target.y - HalfPatchSize - 1));
+            distance += PixelDistance<SourceMirroring, TargetMirroring>(
+                source.x + x, source.y - HalfPatchSize - 1,
+                target.x + x, target.y - HalfPatchSize - 1);
         }
         return distance;
     }
 
-    template<class PixelType>
-    inline void NNF<PixelType>::RandomSearch(const Point32& target)
+    template<class PixelType, bool UseSourceMask>
+    inline void NNF<PixelType, UseSourceMask>::RandomSearch(const Point32& target)
     {
         Point16 offset = f(target);
         DistanceType bestD = _cache.Pixel(target.x, target.y);
@@ -614,9 +659,9 @@ namespace IRL
         }
     }
 
-    template<class PixelType>
+    template<class PixelType, bool UseSourceMask>
     template<bool EarlyTermination>
-    typename NNF<PixelType>::DistanceType NNF<PixelType>::Distance(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known = 0)
+    typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::Distance(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known = 0)
     {
         bool s = !_sourceRect.Contains(sourcePatch);
         bool t = !_targetRect.Contains(targetPatch);
@@ -627,18 +672,18 @@ namespace IRL
         return 0;
     }
 
-    template<class PixelType>
+    template<class PixelType, bool UseSourceMask>
     template<bool EarlyTermination, bool SourceMirroring, bool TargetMirroring>
-    typename NNF<PixelType>::DistanceType NNF<PixelType>::DistanceImpl(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known)
+    typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::DistanceImpl(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known)
     {
         DistanceType distance = 0;
         for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
         {
             for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
             {
-                distance += PixelType::Distance(
-                    Source.GetPixel<SourceMirroring>(sourcePatch.x + x, sourcePatch.y + y),
-                    Target.GetPixel<TargetMirroring>(targetPatch.x + x, targetPatch.y + y));
+                distance += PixelDistance<SourceMirroring, TargetMirroring>(
+                    sourcePatch.x + x, sourcePatch.y + y,
+                    targetPatch.x + x, targetPatch.y + y);
                 if (EarlyTermination) 
                 {
                     if (distance > known)
@@ -647,5 +692,19 @@ namespace IRL
             }
         }
         return distance;
+    }
+
+    template<class PixelType, bool UseSourceMask>
+    template<bool SourceMirroring, bool TargetMirroring>
+    typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::PixelDistance(int sx, int sy, int tx, int ty)
+    {
+        if (UseSourceMask)
+        {
+            if (SourceMask.GetPixel<SourceMirroring>(sx, sy).IsMasked())
+                return PixelType::DistanceUpperBound(); // return > maximum possible distance to eliminate that pixel
+        }
+        return PixelType::Distance(
+            Source.GetPixel<SourceMirroring>(sx, sy),
+            Target.GetPixel<TargetMirroring>(tx, ty));
     }
 }
