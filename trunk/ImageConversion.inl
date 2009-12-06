@@ -71,4 +71,11 @@ namespace IRL
 
         tasks.SpawnAndSync();
     }
+
+    template<class ToPixelType, class FromPixelType>
+    void Convert(ImageWithMask<ToPixelType>& to, const ImageWithMask<FromPixelType>& from)
+    {
+        Convert(to.Image, from.Image);
+        Convert(to.Mask, from.Mask);
+    }
 }

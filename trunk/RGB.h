@@ -9,6 +9,7 @@ namespace IRL
     class RGB
     {
     public:
+        typedef Channel ChannelType;
         typedef typename TypeTraits<Channel>::LargerType DistanceType;
 
         Channel B;
