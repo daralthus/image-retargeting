@@ -76,6 +76,6 @@ namespace IRL
     void Convert(ImageWithMask<ToPixelType>& to, const ImageWithMask<FromPixelType>& from)
     {
         Convert(to.Image, from.Image);
-        Convert(to.Mask, from.Mask);
+        to.Mask = from.Mask;
     }
 }

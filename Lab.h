@@ -32,6 +32,11 @@ namespace IRL
                    (a.a - b.a)*(a.a - b.a) + 
                    (a.b - b.b)*(a.b - b.b);
         }
+
+        static DistanceType DistanceUpperBound()
+        {
+            return 3 * TypeTraits<Channel>::MaxValue() * TypeTraits<Channel>::MaxValue() + 1; 
+        }
     };
 
     typedef Lab<uint8_t>  Lab8;

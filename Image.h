@@ -14,21 +14,21 @@ namespace IRL
         ~Image() {  if (_ptr) _ptr->Release(); }
         Image& operator=(const Image& obj);
 
-        bool IsValid() const {  return _ptr != NULL; }
-        bool IsPrivate() const { ASSERT(IsValid()); return _ptr->GetRefs() == 1; }
+        inline bool IsValid() const {  return _ptr != NULL; }
+        inline bool IsPrivate() const { ASSERT(IsValid()); return _ptr->GetRefs() == 1; }
 
-        int32_t Width() const { ASSERT(IsValid()); return _ptr->Width; }
-        int32_t Height() const { ASSERT(IsValid()); return _ptr->Height; }
+        inline int32_t Width() const { ASSERT(IsValid()); return _ptr->Width; }
+        inline int32_t Height() const { ASSERT(IsValid()); return _ptr->Height; }
 
-        PixelType* Data() { MakePrivate(); return &_ptr->Data[0]; }
-        const PixelType* Data() const { ASSERT(IsValid()); return &_ptr->Data[0]; }
+        inline PixelType* Data() { MakePrivate(); return &_ptr->Data[0]; }
+        inline const PixelType* Data() const { ASSERT(IsValid()); return &_ptr->Data[0]; }
 
-        bool IsValidPixelCoordinates(int32_t x, int32_t y) const 
+        inline bool IsValidPixelCoordinates(int32_t x, int32_t y) const 
         {
             return ((x >= 0 && x < Width()) && (y >= 0 && y < Height()));
         }
 
-        PixelType& Pixel(int32_t x, int32_t y)
+        inline PixelType& Pixel(int32_t x, int32_t y)
         {
             ASSERT(IsValid());
             ASSERT(x >= 0 && x < Width());
@@ -37,7 +37,7 @@ namespace IRL
             return _ptr->Data[x + y * Width()];
         }
 
-        const PixelType& Pixel(int32_t x, int32_t y) const
+        inline const PixelType& Pixel(int32_t x, int32_t y) const
         {
             ASSERT(IsValid());
             ASSERT(x >= 0 && x < Width());
@@ -46,17 +46,17 @@ namespace IRL
         }
 
         // more compact operator versions
-        PixelType& operator()(int32_t x, int32_t y) { return Pixel(x, y); }
-        const PixelType& operator()(int32_t x, int32_t y) const { return Pixel(x, y); }
+        inline PixelType& operator()(int32_t x, int32_t y) { return Pixel(x, y); }
+        inline const PixelType& operator()(int32_t x, int32_t y) const { return Pixel(x, y); }
 
-        const PixelType& PixelWithMirroring(int32_t x, int32_t y) const;
+        inline const PixelType& PixelWithMirroring(int32_t x, int32_t y) const;
         template<bool Mirroring>
         const PixelType& GetPixel(int32_t x, int32_t y) const { return Pixel(x, y); }
         template<>
         const PixelType& GetPixel<true>(int32_t x, int32_t y) const { return PixelWithMirroring(x, y); }
 
     private:
-        void MakePrivate();
+        inline void MakePrivate();
 
         // Private shared data
         class Private : 
