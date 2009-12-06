@@ -23,7 +23,7 @@
 #endif
 
 template<class T>
-const T& Minimum(const T& l, const T& r)
+const T& Minimum(const T& l, const T& r) // because MSVC does not know std::min
 {
     return (l < r) ? l : r;
 }

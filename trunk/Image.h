@@ -1,21 +1,21 @@
 #pragma once
 
-#include "CopyOnWrite.h"
+#include "RefCounted.h"
 
 namespace IRL
 {
-    // Image is a two-dimensional array of pixels.
-    // Supports copy on write.
-
     template<class PixelType>
     class Image
     {
-        IMPLEMENT_COPY_ON_WRITE(Image);
     public:
-        Image(int32_t w, int32_t h)
-        {
-            _ptr = Private::Create(w, h);
-        }
+        Image() : _ptr(NULL) {}
+        Image(int32_t w, int32_t h) { _ptr = Private::Create(w, h); }
+        Image(const Image& obj) : _ptr(NULL) {  *this = obj; }
+        ~Image() {  if (_ptr) _ptr->Release(); }
+        Image& operator=(const Image& obj);
+
+        bool IsValid() const {  return _ptr != NULL; }
+        bool IsPrivate() const { ASSERT(IsValid()); return _ptr->GetRefs() == 1; }
 
         int32_t Width() const { ASSERT(IsValid()); return _ptr->Width; }
         int32_t Height() const { ASSERT(IsValid()); return _ptr->Height; }
@@ -49,63 +49,31 @@ namespace IRL
         PixelType& operator()(int32_t x, int32_t y) { return Pixel(x, y); }
         const PixelType& operator()(int32_t x, int32_t y) const { return Pixel(x, y); }
 
-        const PixelType& PixelWithMirroring(int32_t x, int32_t y) const
-        {
-            if (x < 0) x = 0;
-            if (x >= Width()) x = Width() - 1;
-            if (y < 0) y = 0;
-            if (y >= Height()) y = Height() - 1;
-            return Pixel(x, y);
-        }
-
+        const PixelType& PixelWithMirroring(int32_t x, int32_t y) const;
         template<bool Mirroring>
-        const PixelType& GetPixel(int32_t x, int32_t y) const
-        {
-            return Pixel(x, y);
-        }
-
+        const PixelType& GetPixel(int32_t x, int32_t y) const { return Pixel(x, y); }
         template<>
-        const PixelType& GetPixel<true>(int32_t x, int32_t y) const
-        {
-            return PixelWithMirroring(x, y);
-        }
+        const PixelType& GetPixel<true>(int32_t x, int32_t y) const { return PixelWithMirroring(x, y); }
 
     private:
+        void MakePrivate();
+
         // Private shared data
         class Private : 
             public RefCounted<Private>
         {
         public:
-            static Private* Create(int32_t w, int32_t h)
-            {
-                int sz = sizeof(Private) + w * h * sizeof(PixelType);
-                uint8_t* ptr = (uint8_t*)malloc(sz);
-                ASSERT(ptr != NULL);
-                Private* res = (Private*)ptr;
-                new(res) Private();
-                res->Width = w;
-                res->Height = h;
-                res->Data = (PixelType*)(ptr + sizeof(Private));
-                return res;
-            }
-            static void Delete(Private* obj)
-            {
-                free(obj);
-            }
-
-            Private* Clone() const
-            {
-                Image::Private* res = Create(Width, Height);
-                if (!res)
-                    return NULL;
-                memcpy(res->Data, Data, sizeof(PixelType) * Width * Height);
-                return res;
-            }
-
+            static Private* Create(int32_t w, int32_t h);
+            static void Delete(Private* obj);
+            Private* Clone() const;
         public:
             int32_t Width;
             int32_t Height;
             PixelType* Data;
         };
+
+        Private* _ptr;
     };
 }
+
+#include "Image.inl"
