@@ -28,14 +28,16 @@ namespace IRL
 
         static force_inline DistanceType Distance(const Lab& a, const Lab& b)
         {
-            return (a.L - b.L)*(a.L - b.L) + 
-                   (a.a - b.a)*(a.a - b.a) + 
-                   (a.b - b.b)*(a.b - b.b);
+            DistanceType DL = a.L - b.L;
+            DistanceType Da = a.a - b.a;
+            DistanceType Db = a.b - b.b;
+            return DL * DL + Da * Da + Db * Db;
         }
 
         static DistanceType DistanceUpperBound()
         {
-            return 3 * TypeTraits<Channel>::MaxValue() * TypeTraits<Channel>::MaxValue() + 1; 
+            DistanceType maxValue = TypeTraits<Channel>::MaxValue();
+            return 3 * maxValue * maxValue + 1; 
         }
     };
 
