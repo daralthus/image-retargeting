@@ -8,7 +8,7 @@ namespace IRL
     const int HalfPatchSize = PatchSize / 2;    // handy shortcut
     const int RandomSearchInvAlpha = 2;         // how much to cut each step during random search
     const int RandomSearchLimit = 3;            // how many pixels to examine during random search
-    const int SuperPatchSize = 4 * PatchSize;   // how many pixels to process in one sequential step in parallel mode
+    const int SuperPatchSize = 8 * PatchSize;   // how many pixels to process in one sequential step in parallel mode
 
     //////////////////////////////////////////////////////////////////////////
     // IterationTask implementation
@@ -128,7 +128,15 @@ namespace IRL
             ASSERT((Source.Width() == SourceMask.Width() && Source.Height() == SourceMask.Height()));
         } 
 
-        OffsetField = Image<Point16>(Target.Width(), Target.Height());
+        if (InitialOffsetField != PredefinedField)
+            OffsetField = Image<Point16>(Target.Width(), Target.Height());
+        else
+        {
+            ASSERT(OffsetField.IsValid());
+            ASSERT(OffsetField.Width() == Target.Width());
+            ASSERT(OffsetField.Height() == Target.Height());
+        }
+
         _cache = Image<DistanceType>(Target.Width(), Target.Height());
 
         _sourceRect.Left = HalfPatchSize;
@@ -141,16 +149,6 @@ namespace IRL
         _targetRect.Top = HalfPatchSize;
         _targetRect.Bottom = Target.Height() - HalfPatchSize;
 
-        _sourceRect1px.Left = HalfPatchSize + 1;
-        _sourceRect1px.Right = Source.Width() - HalfPatchSize - 1;
-        _sourceRect1px.Top = HalfPatchSize + 1;
-        _sourceRect1px.Bottom = Source.Height() - HalfPatchSize - 1;
-
-        _targetRect1px.Left = HalfPatchSize + 1;
-        _targetRect1px.Right = Target.Width() - HalfPatchSize - 1;
-        _targetRect1px.Top = HalfPatchSize + 1;
-        _targetRect1px.Bottom = Target.Height() - HalfPatchSize - 1;
-
         BuildSuperPatches();
 
         switch (InitialOffsetField)
@@ -161,11 +159,13 @@ namespace IRL
             case SmoothField:
                 SmoothFill();
             break;
+            case PredefinedField:
+            break;
             default:
                 ASSERT(false);
         }
-        Save("Initial.bmp");
-        _searchRandom.Seed(0);
+
+        _random.Seed(rand()); // TODO: control randomness (to reproduce result)
     }
 
     template<class PixelType, bool UseSourceMask>
@@ -173,21 +173,21 @@ namespace IRL
     {
         Tools::Profiler profiler("BuildSuperPatches");
 
-        int w = Target.Width()  / SuperPatchSize + 1;
-        int h = Target.Height() / SuperPatchSize + 1;
+        int w = (_targetRect.Right - _targetRect.Left) / SuperPatchSize + 1;
+        int h = (_targetRect.Bottom - _targetRect.Top) / SuperPatchSize + 1;
         _superPatches.reserve(w * h);
-        int y = 0;
-        while (y < Target.Height())
+        int y = _targetRect.Top;
+        while (y < _targetRect.Bottom)
         {
             w = 0;
-            int x = 0;
-            int bottomLine = Minimum<int>(y + SuperPatchSize, Target.Height());
-            while (x < Target.Width())
+            int x = _targetRect.Left;
+            int bottomLine = Minimum<int>(y + SuperPatchSize, _targetRect.Bottom);
+            while (x < _targetRect.Right)
             {
                 SuperPatch patch;
                 patch.Left   = x;
                 patch.Top    = y;
-                patch.Right  = Minimum<int>(x + SuperPatchSize, Target.Width());
+                patch.Right  = Minimum<int>(x + SuperPatchSize, _targetRect.Right);
                 patch.Bottom = bottomLine;
                 _superPatches.push_back(patch);
                 x += SuperPatchSize;
@@ -201,18 +201,18 @@ namespace IRL
         // build interdependencies
         for (unsigned int i = 0; i < _superPatches.size(); i++)
         {
-            if (_superPatches[i].Left == 0)
+            if (_superPatches[i].Left == _targetRect.Left)
                 _superPatches[i].LeftNeighbor = NULL;
-            if (_superPatches[i].Right != Target.Width())
+            if (_superPatches[i].Right != _targetRect.Right)
             {
                 _superPatches[i].RightNeighbor = &_superPatches[i+1];
                 _superPatches[i+1].LeftNeighbor = &_superPatches[i];
             } else
                 _superPatches[i].RightNeighbor = NULL;
 
-            if (_superPatches[i].Top == 0)
+            if (_superPatches[i].Top == _targetRect.Top)
                 _superPatches[i].TopNeighbor = NULL;
-            if (_superPatches[i].Bottom != Target.Height())
+            if (_superPatches[i].Bottom != _targetRect.Bottom)
             {
                 _superPatches[i].BottomNeighbor = &_superPatches[i+w];
                 _superPatches[i+w].TopNeighbor = &_superPatches[i];
@@ -227,17 +227,12 @@ namespace IRL
         ASSERT(Source.IsValid());
         ASSERT(OffsetField.IsValid());
 
-        Random rnd(clock());
-
-        const int32_t w = Source.Width();
-        const int32_t h = Source.Height();
-
-        for (int32_t y = 0; y < OffsetField.Height(); y++)
+        for (int32_t y = _targetRect.Top; y < _targetRect.Bottom; y++)
         {
-            for (int32_t x = 0; x < OffsetField.Width(); x++)
+            for (int32_t x = _targetRect.Left; x < _targetRect.Right; x++)
             {
-                int32_t sx = rnd.Uniform<int32_t>(HalfPatchSize, w - HalfPatchSize);
-                int32_t sy = rnd.Uniform<int32_t>(HalfPatchSize, h - HalfPatchSize);
+                int32_t sx = _random.Uniform<int32_t>(_sourceRect.Left, _sourceRect.Right);
+                int32_t sy = _random.Uniform<int32_t>(_sourceRect.Top,  _sourceRect.Bottom);
 
                 CheckThatNotMasked(sx, sy);
 
@@ -253,12 +248,12 @@ namespace IRL
         ASSERT(Source.IsValid());
         ASSERT(OffsetField.IsValid());
 
-        const int32_t w = Source.Width();
-        const int32_t h = Source.Height();
+        int32_t w = Source.Width();
+        int32_t h = Source.Height();
 
-        for (int32_t y = 0; y < OffsetField.Height(); y++)
+        for (int32_t y = _targetRect.Top; y < _targetRect.Bottom; y++)
         {
-            for (int32_t x = 0; x < OffsetField.Width(); x++)
+            for (int32_t x = _targetRect.Left; x < _targetRect.Right; x++)
             {
                 int32_t sx = x * w / OffsetField.Width();
                 int32_t sy = y * h / OffsetField.Height();
@@ -279,8 +274,8 @@ namespace IRL
         int i = 0;
         while (SourceMask(sx, sy).IsMasked() && i < 3)
         {
-            sx = _searchRandom.Uniform(0, int(Source.Width()));
-            sy = _searchRandom.Uniform(0, int(Source.Height()));
+            sx = _random.Uniform<int32_t>(_sourceRect.Left, _sourceRect.Right);
+            sy = _random.Uniform<int32_t>(_sourceRect.Top,  _sourceRect.Bottom);
             i++;
         }
     }
@@ -293,7 +288,7 @@ namespace IRL
 
         Tools::Profiler profiler("Iteration");
         if (!parallel)
-            Iteration(0, 0, Target.Width(), Target.Height(), _iteration);
+            Iteration(_targetRect.Left, _targetRect.Top, _targetRect.Right, _targetRect.Bottom, _iteration);
         else
         {
             _superPatchQueue.Reinitialize();
@@ -354,14 +349,17 @@ namespace IRL
     {
         // Top left point is special - nowhere to propagate from,
         // so do only random search on it
-        if (left == 0 && top == 0)
+        if (left == _targetRect.Left && top == _targetRect.Top)
             RandomSearch(Point32(left, top));
 
-        int startX = left == 0 ? 1 : left;
-        int startY = top == 0 ? 1 : top;
+        int startX = left;
+        if (startX == _targetRect.Left) startX++;
+
+        int startY = top;
+        if (startY == _targetRect.Top) startY++;
 
         // Top most row is also special - only propagation from left occurs
-        if (top == 0)
+        if (top == _targetRect.Top)
         {
             for (int32_t px = startX; px < right; px++)
             {
@@ -371,7 +369,7 @@ namespace IRL
         }
 
         // Left most column is also an exception
-        if (left == 0)
+        if (left == _targetRect.Left)
         {
             for (int32_t py = startY; py < bottom; py++)
             {
@@ -396,14 +394,16 @@ namespace IRL
     {
         // Bottom right point is special - nowhere to propagate from,
         // so do only random search on it
-        if (right == Target.Width() && bottom == Target.Height())
+        if (right == _targetRect.Right && bottom == _targetRect.Bottom)
             RandomSearch(Point32(right - 1, bottom - 1));
 
-        int startX = (right == Target.Width()) ? right - 2 : right - 1;
-        int startY = (bottom == Target.Height()) ? bottom - 2 : bottom - 1;
+        int startX = right - 1;
+        if (startX == _targetRect.Right - 1) startX--;
+        int startY = bottom - 1;
+        if (startY == _targetRect.Bottom - 1) startY--;
 
         // Bottom most row is also special - only propagation from right occurs
-        if (bottom == Target.Height())
+        if (bottom == _targetRect.Bottom)
         {
             for (int32_t px = startX; px >= left; px--)
             {
@@ -413,7 +413,7 @@ namespace IRL
         }
 
         // Right most column is also an exception
-        if (right == Target.Width())
+        if (right == _targetRect.Right)
         {
             for (int32_t py = startY; py >= top; py--)
             {
@@ -452,7 +452,7 @@ namespace IRL
         {
             const Point32 pointToTest(target.x + Direction, target.y);
             const Point32 newSource = target + f(pointToTest);
-            if (source != newSource && Source.IsValidPixelCoordinates(newSource.x, newSource.y))
+            if (source != newSource && _sourceRect.Contains(newSource))
             {
                 DistanceType distance = MoveDistanceByDx(pointToTest, Direction);
                 source = newSource;
@@ -469,7 +469,7 @@ namespace IRL
         {
             const Point32 pointToTest(target.x, target.y + Direction);
             const Point32 newSource = target + f(pointToTest);
-            if (source != newSource && Source.IsValidPixelCoordinates(newSource.x, newSource.y))
+            if (source != newSource && _sourceRect.Contains(newSource))
             {
                 DistanceType distance = MoveDistanceByDy(pointToTest, Direction);
                 source = newSource;
@@ -490,129 +490,91 @@ namespace IRL
     }
 
     template<class PixelType, bool UseSourceMask>
-    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceByDx(const Point32& target, int dx)
+    inline typename NNF<PixelType, UseSourceMask>::DistanceType 
+        NNF<PixelType, UseSourceMask>::MoveDistanceByDx(const Point32& target, int dx)
     {
         DistanceType distance = _cache.Pixel(target.x, target.y);
         Point32 source = target + f(target);
-        bool s = !_sourceRect1px.Contains(source);
-        bool t = !_targetRect1px.Contains(target);
-        if ( s &&  t) return MoveDistanceByDxImpl<true, true>(dx, target, source, distance);
-        if ( s && !t) return MoveDistanceByDxImpl<true, false>(dx, target, source, distance);
-        if (!s &&  t) return MoveDistanceByDxImpl<false, true>(dx, target, source, distance);
-        if (!s && !t) return MoveDistanceByDxImpl<false, false>(dx, target, source, distance);
+        if (dx == -1)
+        {
+            // move right
+            for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
+            {
+                distance -= PixelDistance(
+                    source.x - HalfPatchSize, source.y + y,
+                    target.x - HalfPatchSize, target.y + y);
+            }
+            for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
+            {
+                distance += PixelDistance(
+                    source.x + HalfPatchSize + 1, source.y + y,
+                    target.x + HalfPatchSize + 1, target.y + y);
+            }
+            return distance;
+        }
+        if (dx ==  1)
+        {
+            // move left
+            for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
+            {
+                distance -= PixelDistance(
+                    source.x + HalfPatchSize, source.y + y,
+                    target.x + HalfPatchSize, target.y + y);
+            }
+            for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
+            {
+                distance += PixelDistance(
+                    source.x - HalfPatchSize - 1, source.y + y,
+                    target.x - HalfPatchSize - 1, target.y + y);
+            }
+            return distance;
+        }
         ASSERT(false);
         return 0;
     }
 
     template<class PixelType, bool UseSourceMask>
-    template<bool SourceMirroring, bool TargetMirroring>
-    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceByDxImpl(int dx, const Point32& target, const Point32& source, DistanceType distance)
-    {
-        if (dx == -1) return MoveDistanceRight<SourceMirroring, TargetMirroring>(target, source, distance);
-        if (dx ==  1) return MoveDistanceLeft<SourceMirroring, TargetMirroring>(target, source, distance);
-        ASSERT(false);
-        return 0;
-    }
-
-    template<class PixelType, bool UseSourceMask>
-    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceByDy(const Point32& target, int dy)
+    inline typename NNF<PixelType, UseSourceMask>::DistanceType 
+        NNF<PixelType, UseSourceMask>::MoveDistanceByDy(const Point32& target, int dy)
     {
         DistanceType distance = _cache.Pixel(target.x, target.y);
         Point32 source = target + f(target);
-        bool s = !_sourceRect1px.Contains(source);
-        bool t = !_targetRect1px.Contains(target);
-        if ( s &&  t) return MoveDistanceByDyImpl<true, true>(dy, target, source, distance);
-        if ( s && !t) return MoveDistanceByDyImpl<true, false>(dy, target, source, distance);
-        if (!s &&  t) return MoveDistanceByDyImpl<false, true>(dy, target, source, distance);
-        if (!s && !t) return MoveDistanceByDyImpl<false, false>(dy, target, source, distance);
+        if (dy == -1)
+        {
+            // move up
+            for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
+            {
+                distance -= PixelDistance(
+                    source.x + x, source.y - HalfPatchSize,
+                    target.x + x, target.y - HalfPatchSize);
+            }
+            for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
+            {
+                distance += PixelDistance(
+                    source.x + x, source.y + HalfPatchSize + 1,
+                    target.x + x, target.y + HalfPatchSize + 1);
+            }
+            return distance;
+        }
+        if (dy ==  1)
+        {
+            // move down
+            for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
+            {
+                distance -= PixelDistance(
+                    source.x + x, source.y + HalfPatchSize,
+                    target.x + x, target.y + HalfPatchSize);
+            }
+            for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
+            {
+                distance += PixelDistance(
+                    source.x + x, source.y - HalfPatchSize - 1,
+                    target.x + x, target.y - HalfPatchSize - 1);
+            }
+            return distance;
+        }
         ASSERT(false);
         return 0;
-    }
-
-    template<class PixelType, bool UseSourceMask>
-    template<bool SourceMirroring, bool TargetMirroring>
-    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceByDyImpl(int dy, const Point32& target, const Point32& source, DistanceType distance)
-    {
-        if (dy == -1) return MoveDistanceUp<SourceMirroring, TargetMirroring>(target, source, distance);
-        if (dy ==  1) return MoveDistanceDown<SourceMirroring, TargetMirroring>(target, source, distance);
-        ASSERT(false);
-        return 0;
-    }
-
-    template<class PixelType, bool UseSourceMask>
-    template<bool SourceMirroring, bool TargetMirroring>
-    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceRight(const Point32& target, const Point32& source, DistanceType distance)
-    {
-        for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
-        {
-            distance -= PixelDistance<SourceMirroring, TargetMirroring>(
-                source.x - HalfPatchSize, source.y + y,
-                target.x - HalfPatchSize, target.y + y);
-        }
-        for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
-        {
-            distance += PixelDistance<SourceMirroring, TargetMirroring>(
-                source.x + HalfPatchSize + 1, source.y + y,
-                target.x + HalfPatchSize + 1, target.y + y);
-        }
-        return distance;
-    }
-
-    template<class PixelType, bool UseSourceMask>
-    template<bool SourceMirroring, bool TargetMirroring>
-    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceLeft(const Point32& target, const Point32& source, DistanceType distance)
-    {
-        for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
-        {
-            distance -= PixelDistance<SourceMirroring, TargetMirroring>(
-                source.x + HalfPatchSize, source.y + y,
-                target.x + HalfPatchSize, target.y + y);
-        }
-        for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
-        {
-            distance += PixelDistance<SourceMirroring, TargetMirroring>(
-                source.x - HalfPatchSize - 1, source.y + y,
-                target.x - HalfPatchSize - 1, target.y + y);
-        }
-        return distance;
-    }
-
-    template<class PixelType, bool UseSourceMask>
-    template<bool SourceMirroring, bool TargetMirroring>
-    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceUp(const Point32& target, const Point32& source, DistanceType distance)
-    {
-        for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
-        {
-            distance -= PixelDistance<SourceMirroring, TargetMirroring>(
-                source.x + x, source.y - HalfPatchSize,
-                target.x + x, target.y - HalfPatchSize);
-        }
-        for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
-        {
-            distance += PixelDistance<SourceMirroring, TargetMirroring>(
-                source.x + x, source.y + HalfPatchSize + 1,
-                target.x + x, target.y + HalfPatchSize + 1);
-        }
-        return distance;
-    }
-
-    template<class PixelType, bool UseSourceMask>
-    template<bool SourceMirroring, bool TargetMirroring>
-    inline typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::MoveDistanceDown(const Point32& target, const Point32& source, DistanceType distance)
-    {
-        for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
-        {
-            distance -= PixelDistance<SourceMirroring, TargetMirroring>(
-                source.x + x, source.y + HalfPatchSize,
-                target.x + x, target.y + HalfPatchSize);
-        }
-        for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
-        {
-            distance += PixelDistance<SourceMirroring, TargetMirroring>(
-                source.x + x, source.y - HalfPatchSize - 1,
-                target.x + x, target.y - HalfPatchSize - 1);
-        }
-        return distance;
     }
 
     template<class PixelType, bool UseSourceMask>
@@ -628,8 +590,8 @@ namespace IRL
         Point32 min_w = target + offset;
 
         // uniform random sample
-        int32_t Rx = _searchRandom.Uniform<int32_t>(0, Source.Width());
-        int32_t Ry = _searchRandom.Uniform<int32_t>(0, Source.Height());
+        int32_t Rx = _random.Uniform<int32_t>(_sourceRect.Left, _sourceRect.Right);
+        int32_t Ry = _random.Uniform<int32_t>(_sourceRect.Top, _sourceRect.Bottom);
         Point32 w(Rx - min_w.x, Ry - min_w.y);
 
         int i = 0;
@@ -661,27 +623,18 @@ namespace IRL
 
     template<class PixelType, bool UseSourceMask>
     template<bool EarlyTermination>
-    typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::Distance(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known = 0)
+    typename NNF<PixelType, UseSourceMask>::DistanceType 
+        NNF<PixelType, UseSourceMask>::Distance(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known = 0)
     {
-        bool s = !_sourceRect.Contains(sourcePatch);
-        bool t = !_targetRect.Contains(targetPatch);
-        if ( s &&  t) return DistanceImpl<EarlyTermination, true, true>(targetPatch, sourcePatch, known);
-        if ( s && !t) return DistanceImpl<EarlyTermination, true, false>(targetPatch, sourcePatch, known);
-        if (!s &&  t) return DistanceImpl<EarlyTermination, false, true>(targetPatch, sourcePatch, known);
-        if (!s && !t) return DistanceImpl<EarlyTermination, false, false>(targetPatch, sourcePatch, known);
-        return 0;
-    }
+        ASSERT(_sourceRect.Contains(sourcePatch));
+        ASSERT(_targetRect.Contains(targetPatch));
 
-    template<class PixelType, bool UseSourceMask>
-    template<bool EarlyTermination, bool SourceMirroring, bool TargetMirroring>
-    typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::DistanceImpl(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known)
-    {
         DistanceType distance = 0;
         for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
         {
             for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
             {
-                distance += PixelDistance<SourceMirroring, TargetMirroring>(
+                distance += PixelDistance(
                     sourcePatch.x + x, sourcePatch.y + y,
                     targetPatch.x + x, targetPatch.y + y);
                 if (EarlyTermination) 
@@ -695,16 +648,15 @@ namespace IRL
     }
 
     template<class PixelType, bool UseSourceMask>
-    template<bool SourceMirroring, bool TargetMirroring>
-    typename NNF<PixelType, UseSourceMask>::DistanceType NNF<PixelType, UseSourceMask>::PixelDistance(int sx, int sy, int tx, int ty)
+    typename NNF<PixelType, UseSourceMask>::DistanceType 
+        NNF<PixelType, UseSourceMask>::PixelDistance(int sx, int sy, int tx, int ty)
     {
         if (UseSourceMask)
         {
-            if (SourceMask.GetPixel<SourceMirroring>(sx, sy).IsMasked())
-                return PixelType::DistanceUpperBound(); // return > maximum possible distance to eliminate that pixel
+            if (SourceMask(sx, sy).IsMasked())
+                return PixelType::DistanceUpperBound() * PatchSize * PatchSize; // return > maximum possible distance to eliminate that pixel
         }
-        return PixelType::Distance(
-            Source.GetPixel<SourceMirroring>(sx, sy),
-            Target.GetPixel<TargetMirroring>(tx, ty));
+
+        return PixelType::Distance(Source(sx, sy), Target(tx, ty));
     }
 }
