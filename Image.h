@@ -23,7 +23,9 @@ namespace IRL
         inline PixelType* Data() { MakePrivate(); return &_ptr->Data[0]; }
         inline const PixelType* Data() const { ASSERT(IsValid()); return &_ptr->Data[0]; }
 
-        inline PixelType& Pixel(int32_t x, int32_t y)
+        inline void Clear() { memset(Data(), 0, sizeof(PixelType) * Width() * Height()); }
+
+        force_inline PixelType& Pixel(int32_t x, int32_t y)
         {
             ASSERT(IsValid());
             ASSERT(x >= 0 && x < Width());
@@ -32,7 +34,7 @@ namespace IRL
             return _ptr->Data[x + y * Width()];
         }
 
-        inline const PixelType& Pixel(int32_t x, int32_t y) const
+        force_inline const PixelType& Pixel(int32_t x, int32_t y) const
         {
             ASSERT(IsValid());
             ASSERT(x >= 0 && x < Width());
@@ -41,8 +43,8 @@ namespace IRL
         }
 
         // more compact operator versions
-        inline PixelType& operator()(int32_t x, int32_t y) { return Pixel(x, y); }
-        inline const PixelType& operator()(int32_t x, int32_t y) const { return Pixel(x, y); }
+        force_inline PixelType& operator()(int32_t x, int32_t y) { return Pixel(x, y); }
+        force_inline const PixelType& operator()(int32_t x, int32_t y) const { return Pixel(x, y); }
 
     private:
         inline void MakePrivate();

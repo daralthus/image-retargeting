@@ -70,6 +70,7 @@ namespace IRL
         {
             x = 0;
             y = 0;
+            Norm = 0;
         }
 
         void Append(const Point2D& pixel, Coeff c)
@@ -85,6 +86,20 @@ namespace IRL
             result.y = (uint16_t)(y / normalizer);
             return result;
         }
+
+        force_inline void AppendAndChangeNorm(const Point2D& pixel, Coeff c)
+        {
+            Append(pixel, c);
+            Norm += c;
+        }
+
+        force_inline const Point2D GetSum() const
+        {
+            return GetSum(Norm);
+        }
+
+    public:
+        Coeff Norm;
 
     private:
         int32_t x, y;

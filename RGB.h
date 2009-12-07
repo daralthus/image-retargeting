@@ -50,7 +50,7 @@ namespace IRL
             return RGB(color);
         }
 
-        static DistanceType Distance(const RGB& a, const RGB& b)
+        static force_inline DistanceType Distance(const RGB& a, const RGB& b)
         {
             return (a.R - b.R)*(a.R - b.R) + 
                    (a.G - b.G)*(a.G - b.G) + 
@@ -85,14 +85,14 @@ namespace IRL
             Norm = 0;
         }
 
-        void Append(const PixelType& pixel, Coeff c)
+        force_inline void Append(const PixelType& pixel, Coeff c)
         {
             B += (LargerType)(c * pixel.B);
             G += (LargerType)(c * pixel.G);
             R += (LargerType)(c * pixel.R);
         }
 
-        const PixelType GetSum(Coeff normalizer) const
+        force_inline const PixelType GetSum(Coeff normalizer) const
         {
             PixelType result;
             result.B = (ChannelType)(B / normalizer);
@@ -101,13 +101,13 @@ namespace IRL
             return result;
         }
 
-        void AppendAndChangeNorm(const PixelType& pixel, Coeff c)
+        force_inline void AppendAndChangeNorm(const PixelType& pixel, Coeff c)
         {
             Append(pixel, c);
             Norm += c;
         }
 
-        const PixelType GetSum() const
+        force_inline const PixelType GetSum() const
         {
             return GetSum(Norm);
         }

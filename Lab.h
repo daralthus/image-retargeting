@@ -26,7 +26,7 @@ namespace IRL
             b = c3;
         }
 
-        static DistanceType Distance(const Lab& a, const Lab& b)
+        static force_inline DistanceType Distance(const Lab& a, const Lab& b)
         {
             return (a.L - b.L)*(a.L - b.L) + 
                    (a.a - b.a)*(a.a - b.a) + 
@@ -61,14 +61,14 @@ namespace IRL
             Norm = 0;
         }
 
-        void Append(const PixelType& pixel, Coeff c)
+        force_inline void Append(const PixelType& pixel, Coeff c)
         {
             L += (LargerType)(c * pixel.L);
             a += (LargerType)(c * pixel.a);
             b += (LargerType)(c * pixel.b);
         }
 
-        const PixelType GetSum(Coeff normalizer) const
+        force_inline const PixelType GetSum(Coeff normalizer) const
         {
             PixelType result;
             result.L = (ChannelType)(L / normalizer);
@@ -77,13 +77,13 @@ namespace IRL
             return result;
         }
 
-        void AppendAndChangeNorm(const PixelType& pixel, Coeff c)
+        force_inline void AppendAndChangeNorm(const PixelType& pixel, Coeff c)
         {
             Append(pixel, c);
             Norm += c;
         }
 
-        const PixelType GetSum() const
+        force_inline const PixelType GetSum() const
         {
             return GetSum(Norm);
         }

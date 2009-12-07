@@ -4,6 +4,7 @@
 namespace IRL
 {
     const double Alpha = 0.5;
+    const int    NNFIterations = 5;
 
     template<class PixelType>
     BidirectionalSimilarity<PixelType>::BidirectionalSimilarity()
@@ -28,7 +29,7 @@ namespace IRL
         double Ns = (1.0 - Alpha) * 100.0 * (Target.Width() * Target.Height()) / (Source.Width() * Source.Height());
 
         // clear destination
-        memset(_votes.Data(), 0, sizeof(Accumulator<PixelType, double>) * _votes.Width() * _votes.Height());
+        _votes.Clear();
 
         // 1) For each target patch find the most similar source patch.
         //    Colors of pixels in source patch are votes for pixels in target patch.
@@ -39,7 +40,7 @@ namespace IRL
                 for (int32_t x = HalfPatchSize; x < Target.Width() - HalfPatchSize; x++)
                 {
                     Point16 Qc(x, y);
-                    Point16 Pc = Qc + _t2s(x, y);
+                    Point16 Pc = Qc + TargetToSource(x, y);
 
                     for (int py = -HalfPatchSize; py <= HalfPatchSize; py++)
                     {
@@ -61,7 +62,7 @@ namespace IRL
                 for (int32_t x = HalfPatchSize; x < Source.Width() - HalfPatchSize; x++)
                 {
                     Point16 Pc(x, y);
-                    Point16 Qc = Pc + _s2t(x, y);
+                    Point16 Qc = Pc + SourceToTarget(x, y);
 
                     for (int py = -HalfPatchSize; py <= HalfPatchSize; py++)
                     {
@@ -91,8 +92,8 @@ namespace IRL
         std::string i = str.str();
 
         SaveImage(Result, "Out/Result/" + i + ".bmp");
-        SaveImage(_s2t,   "Out/S2T/" + i + ".bmp");
-        SaveImage(_t2s,   "Out/T2S/" + i + ".bmp");
+        SaveImage(SourceToTarget,   "Out/S2T/" + i + ".bmp");
+        SaveImage(TargetToSource,   "Out/T2S/" + i + ".bmp");
 
         _iteration++;
     }
@@ -104,34 +105,34 @@ namespace IRL
         ASSERT(Target.IsValid());
 
         Result = Target;
-        _votes = Image<Accumulator<PixelType, double> >(Target.Width(), Target.Height());
+        _votes = Votes(Target.Width(), Target.Height());
     }
 
     template<class PixelType>
     void BidirectionalSimilarity<PixelType>::UpdateSourceToTargetNNF(bool parallel)
     {
         Tools::Profiler profiler("SourceToTargetNNF");
-        NNF<PixelType, false> SourceToTarget;
-        SourceToTarget.Source = Result;
-        SourceToTarget.Target = Source;
-        SourceToTarget.InitialOffsetField = RandomField;
-        for (int i = 0; i < 5; i++)
-            SourceToTarget.Iteration(parallel);
-        _s2t = SourceToTarget.OffsetField;
+        NNF<PixelType, false> s2t;
+        s2t.Source = Result;
+        s2t.Target = Source;
+        s2t.InitialOffsetField = RandomField;
+        for (int i = 0; i < NNFIterations; i++)
+            s2t.Iteration(parallel);
+        SourceToTarget = s2t.Field;
     }
 
     template<class PixelType>
     void BidirectionalSimilarity<PixelType>::UpdateTargetToSourceNNF(bool parallel)
     {
         Tools::Profiler profiler("TargetToSourceNNF");
-        NNF<PixelType, false> TargetToSource; 
-        TargetToSource.Source = Source;
-        TargetToSource.SourceMask = SourceMask;
-        TargetToSource.Target = Result;
-        TargetToSource.InitialOffsetField = RandomField;
-        for (int i = 0; i < 5; i++)
-            TargetToSource.Iteration(parallel);
-        _t2s = TargetToSource.OffsetField;
+        NNF<PixelType, false> t2s; 
+        t2s.Source = Source;
+        t2s.SourceMask = SourceMask;
+        t2s.Target = Result;
+        t2s.InitialOffsetField = RandomField;
+        for (int i = 0; i < NNFIterations; i++)
+            t2s.Iteration(parallel);
+        TargetToSource = t2s.Field;
     }
 
     template<class PixelType>

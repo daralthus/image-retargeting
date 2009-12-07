@@ -22,7 +22,7 @@ int main(int, char**)
     alg.Target = LoadImage<Color>("Target.bmp");
 
     for (int i = 0; i < 1; i++)
-        alg.Iteration(true);
+        alg.Iteration(false);
 
     return 0;
 }

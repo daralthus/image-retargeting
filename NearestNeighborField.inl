@@ -129,12 +129,12 @@ namespace IRL
         } 
 
         if (InitialOffsetField != PredefinedField)
-            OffsetField = Image<Point16>(Target.Width(), Target.Height());
+            Field = OffsetField(Target.Width(), Target.Height());
         else
         {
-            ASSERT(OffsetField.IsValid());
-            ASSERT(OffsetField.Width() == Target.Width());
-            ASSERT(OffsetField.Height() == Target.Height());
+            ASSERT(Field.IsValid());
+            ASSERT(Field.Width() == Target.Width());
+            ASSERT(Field.Height() == Target.Height());
         }
 
         _cache = Image<DistanceType>(Target.Width(), Target.Height());
@@ -225,7 +225,7 @@ namespace IRL
     void NNF<PixelType, UseSourceMask>::RandomFill()
     {
         ASSERT(Source.IsValid());
-        ASSERT(OffsetField.IsValid());
+        ASSERT(Field.IsValid());
 
         for (int32_t y = _targetRect.Top; y < _targetRect.Bottom; y++)
         {
@@ -236,8 +236,8 @@ namespace IRL
 
                 CheckThatNotMasked(sx, sy);
 
-                OffsetField(x, y).x = (uint16_t)(sx - x);
-                OffsetField(x, y).y = (uint16_t)(sy - y);
+                Field(x, y).x = (uint16_t)(sx - x);
+                Field(x, y).y = (uint16_t)(sy - y);
             }
         }
     }
@@ -246,7 +246,7 @@ namespace IRL
     void NNF<PixelType, UseSourceMask>::SmoothFill()
     {
         ASSERT(Source.IsValid());
-        ASSERT(OffsetField.IsValid());
+        ASSERT(Field.IsValid());
 
         int32_t w = Source.Width();
         int32_t h = Source.Height();
@@ -255,13 +255,13 @@ namespace IRL
         {
             for (int32_t x = _targetRect.Left; x < _targetRect.Right; x++)
             {
-                int32_t sx = x * w / OffsetField.Width();
-                int32_t sy = y * h / OffsetField.Height();
+                int32_t sx = x * w / Field.Width();
+                int32_t sy = y * h / Field.Height();
                 
                 CheckThatNotMasked(sx, sy);
 
-                OffsetField(x, y).x = (uint16_t)(sx - x);
-                OffsetField(x, y).y = (uint16_t)(sy - y);
+                Field(x, y).x = (uint16_t)(sx - x);
+                Field(x, y).y = (uint16_t)(sy - y);
             }
         }
     }
@@ -317,7 +317,7 @@ namespace IRL
     template<class PixelType, bool UseSourceMask>
     void NNF<PixelType, UseSourceMask>::Save(const std::string& path)
     {
-        SaveImage(OffsetField, path);
+        SaveImage(Field, path);
     }
 
     template<class PixelType, bool UseSourceMask>
