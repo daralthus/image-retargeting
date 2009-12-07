@@ -4,10 +4,11 @@
 #include "GaussianPyramid.h"
 #include "NearestNeighborField.h"
 #include "ImageWithMask.h"
+#include "BidirectionalSimilarity.h"
 
 using namespace IRL;
 
-// can be RGB8 RGB16 RGBFloat RGBDoulbe Lab8 Lab16 LabFloat LabDouble
+// can be RGB8 RGB16 RGBFloat RGBDouble Lab8 Lab16 LabFloat LabDouble
 typedef RGB8 Color; 
 
 int main(int, char**)
@@ -16,17 +17,12 @@ int main(int, char**)
 
     Tools::Profiler profiler("main");
 
-    ImageWithMask<Color> image = LoadImageWithMask<Color>("Source.png");
+    BidirectionalSimilarity<Color> alg;
+    alg.Source = LoadImage<Color>("Source.bmp");
+    alg.Target = LoadImage<Color>("Target.bmp");
 
-    NNF<Color, true> nnf;
+    for (int i = 0; i < 1; i++)
+        alg.Iteration(true);
 
-    nnf.Source = image.Image;
-    nnf.SourceMask = image.Mask;
-    nnf.Target = image.Image;
-
-    for (int i = 0; i < 10; i++)
-        nnf.Iteration();
-
-    nnf.Save("Out/NNF.bmp");
     return 0;
 }
