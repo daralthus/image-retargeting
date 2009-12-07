@@ -12,6 +12,14 @@
 
 namespace IRL
 {
+    // Possible types of initial NNF field
+    enum InitialNNFType
+    {
+        RandomField, 
+        SmoothField,
+        PredefinedField
+    };
+
     // NNF stands for NearestNeighborField
     template<class PixelType, bool UseSourceMask>
     class NNF
@@ -19,18 +27,11 @@ namespace IRL
         typedef typename PixelType::DistanceType DistanceType;
 
     public:
-        // Possible types of initial NNF field
-        enum InitialFieldType
-        {
-            RandomField, 
-            SmoothField
-        };
-
-        Image<PixelType> Source;     // B
-        Image<Alpha8>    SourceMask; // which pixel from source is allowed to use
-        Image<PixelType> Target;     // A
-        Image<Point16> OffsetField; // Result of the algorithm's work
-        InitialFieldType InitialOffsetField;
+        Image<PixelType> Source;      // B
+        Image<Alpha8>    SourceMask;  // which pixel from source is allowed to use
+        Image<PixelType> Target;      // A
+        Image<Point16>   OffsetField; // Result of the algorithm's work
+        InitialNNFType InitialOffsetField;
 
     public:
         NNF();
@@ -78,26 +79,13 @@ namespace IRL
         inline DistanceType MoveDistanceByDx(const Point32& target, int dx);
         inline DistanceType MoveDistanceByDy(const Point32& target, int dy);
 
-        template<bool SourceMirroring, bool TargetMirroring>
-        inline DistanceType MoveDistanceByDxImpl(int dx, const Point32& target, const Point32& source, DistanceType distance);
-        template<bool SourceMirroring, bool TargetMirroring>
-        inline DistanceType MoveDistanceByDyImpl(int dy, const Point32& target, const Point32& source, DistanceType distance);
-        template<bool SourceMirroring, bool TargetMirroring>
-        inline DistanceType MoveDistanceRight(const Point32& target, const Point32& source, DistanceType distance);
-        template<bool SourceMirroring, bool TargetMirroring>
-        inline DistanceType MoveDistanceLeft(const Point32& target, const Point32& source, DistanceType distance);
-        template<bool SourceMirroring, bool TargetMirroring>
-        inline DistanceType MoveDistanceUp(const Point32& target, const Point32& source, DistanceType distance);
-        template<bool SourceMirroring, bool TargetMirroring>
-        inline DistanceType MoveDistanceDown(const Point32& target, const Point32& source, DistanceType distance);
-
         template<int Direction> bool CheckX(int x); // no implementation here
-        template<> inline bool CheckX<-1>(int x) { return x > 0; }
-        template<> inline bool CheckX<+1>(int x) { return x < Target.Width() - 1; }
+        template<> inline bool CheckX<-1>(int x) { return x > _targetRect.Left; }
+        template<> inline bool CheckX<+1>(int x) { return x < _targetRect.Right - 1; }
 
         template<int Direction> bool CheckY(int x);
-        template<> inline bool CheckY<-1>(int y) { return y > 0; }
-        template<> inline bool CheckY<+1>(int y) { return y < Target.Height() - 1; }
+        template<> inline bool CheckY<-1>(int y) { return y > _targetRect.Top; }
+        template<> inline bool CheckY<+1>(int y) { return y < _targetRect.Bottom - 1; }
         #pragma endregion
 
         // Calculate distance from target to source patch.
@@ -105,13 +93,8 @@ namespace IRL
         template<bool EarlyTermination>
         DistanceType Distance(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known = 0);
 
-        // Support method for Distance
-        template<bool EarlyTermination, bool SourceMirroring, bool TargetMirroring>
-        DistanceType DistanceImpl(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known);
-
         // Return distance between pixels
-        template<bool SourceMirroring, bool TargetMirroring>
-        DistanceType PixelDistance(int sx, int sy, int tx, int ty);
+        inline DistanceType PixelDistance(int sx, int sy, int tx, int ty);
 
         // handy shortcut
         inline Point16& f(const Point32& p) { return OffsetField(p.x, p.y); }
@@ -160,7 +143,7 @@ namespace IRL
         // Holds current best distances
         Image<DistanceType> _cache;
         // Random generator. Note: in parallel mode result is also depends on thread scheduling
-        Random _searchRandom;
+        Random _random;
         // Current iteration number (starts with 0)
         int _iteration;
 
@@ -168,11 +151,6 @@ namespace IRL
         Rectangle<int32_t> _sourceRect;
         // Rectangle with allowed target patch centers
         Rectangle<int32_t> _targetRect;
-
-        // Rectangle with allowed source patch centers reduced by 1px from all sizes
-        Rectangle<int32_t> _sourceRect1px;
-        // Rectangle with allowed target patch centers reduced by 1px from all sizes
-        Rectangle<int32_t> _targetRect1px;
 
         // Multithreading support
         Queue<SuperPatch> _superPatchQueue;
