@@ -58,16 +58,17 @@ namespace IRL
             L = 0;
             a = 0;
             b = 0;
+            Norm = 0;
         }
 
         void Append(const PixelType& pixel, Coeff c)
         {
-            L += c * pixel.L;
-            a += c * pixel.a;
-            b += c * pixel.b;
+            L += (LargerType)(c * pixel.L);
+            a += (LargerType)(c * pixel.a);
+            b += (LargerType)(c * pixel.b);
         }
 
-        const PixelType GetSum(Coeff normalizer)
+        const PixelType GetSum(Coeff normalizer) const
         {
             PixelType result;
             result.L = (ChannelType)(L / normalizer);
@@ -75,6 +76,20 @@ namespace IRL
             result.b = (ChannelType)(b / normalizer);
             return result;
         }
+
+        void AppendAndChangeNorm(const PixelType& pixel, Coeff c)
+        {
+            Append(pixel, c);
+            Norm += c;
+        }
+
+        const PixelType GetSum() const
+        {
+            return GetSum(Norm);
+        }
+
+    public:
+        Coeff Norm;
 
     private:
         LargerType L, a, b;

@@ -57,6 +57,7 @@ namespace IRL
         Accumulator()
         {
             A = 0;
+            Norm = 0;
         }
 
         void Append(const PixelType& pixel, Coeff c)
@@ -64,12 +65,26 @@ namespace IRL
             A += c * pixel.A;
         }
 
-        const PixelType GetSum(Coeff normalizer)
+        const PixelType GetSum(Coeff normalizer) const
         {
             PixelType result;
             result.A = (ChannelType)(A / normalizer);
             return result;
         }
+
+        void AppendAndChangeNorm(const PixelType& pixel, Coeff c)
+        {
+            Append(pixel, c);
+            Norm += c;
+        }
+
+        const PixelType GetSum() const
+        {
+            return GetSum(Norm);
+        }
+
+    public:
+        Coeff Norm;
 
     private:
         LargerType A;
