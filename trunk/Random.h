@@ -17,13 +17,13 @@ namespace IRL
         template<class T>
         const T Uniform(const T min, const T max)
         {
-            return (T)(Next() * (max - min) / m + min);
+            return (T)(Next() * (max - min - 1) / m + min);
         }
 
         template<class T>
         const T Uniform(const T max)
         {
-            return (T)(Next() * max / m);
+            return (T)(Next() * (max - 1) / m);
         }
 
     private:
