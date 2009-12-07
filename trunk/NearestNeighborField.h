@@ -20,6 +20,8 @@ namespace IRL
         PredefinedField
     };
 
+    typedef Image<Point16> OffsetField;
+
     // NNF stands for NearestNeighborField
     template<class PixelType, bool UseSourceMask>
     class NNF
@@ -30,7 +32,7 @@ namespace IRL
         Image<PixelType> Source;      // B
         Image<Alpha8>    SourceMask;  // which pixel from source is allowed to use
         Image<PixelType> Target;      // A
-        Image<Point16>   OffsetField; // Result of the algorithm's work
+        OffsetField      Field;       // Result of the algorithm's work
         InitialNNFType InitialOffsetField;
 
     public:
@@ -76,8 +78,8 @@ namespace IRL
         inline void RandomSearch(const Point32& target);
 
         #pragma region Propagate support methods
-        inline DistanceType MoveDistanceByDx(const Point32& target, int dx);
-        inline DistanceType MoveDistanceByDy(const Point32& target, int dy);
+        force_inline DistanceType MoveDistanceByDx(const Point32& target, int dx);
+        force_inline DistanceType MoveDistanceByDy(const Point32& target, int dy);
 
         template<int Direction> bool CheckX(int x); // no implementation here
         template<> inline bool CheckX<-1>(int x) { return x > _targetRect.Left; }
@@ -91,13 +93,13 @@ namespace IRL
         // Calculate distance from target to source patch.
         // If EarlyTermination == true use 'known' to stop calculation once distance > known
         template<bool EarlyTermination>
-        DistanceType Distance(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known = 0);
+        force_inline DistanceType Distance(const Point32& targetPatch, const Point32& sourcePatch, DistanceType known = 0);
 
         // Return distance between pixels
-        inline DistanceType PixelDistance(int sx, int sy, int tx, int ty);
+        force_inline DistanceType PixelDistance(int sx, int sy, int tx, int ty);
 
         // handy shortcut
-        inline Point16& f(const Point32& p) { return OffsetField(p.x, p.y); }
+        force_inline Point16& f(const Point32& p) { return Field(p.x, p.y); }
 
     private:
         // Used to implement multithreading

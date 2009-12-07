@@ -26,6 +26,12 @@
 #endif
 #endif
 
+#ifdef _MSC_VER
+#define force_inline __forceinline
+#else
+#define force_inline inline
+#endif
+
 template<class T>
 const T& Minimum(const T& l, const T& r) // because MSVC does not know std::min
 {

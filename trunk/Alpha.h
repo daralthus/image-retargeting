@@ -22,7 +22,7 @@ namespace IRL
             A = a;
         }
 
-        bool IsMasked() const
+        force_inline bool IsMasked() const
         {
             return A < TypeTraits<Channel>::MaxValue() / 2;
         }
@@ -34,7 +34,7 @@ namespace IRL
             return Alpha(A);
         }
 
-        static DistanceType Distance(const Alpha& a, const Alpha& b)
+        static force_inline DistanceType Distance(const Alpha& a, const Alpha& b)
         {
             return (a.A - b.A)*(a.A - b.A);
         }
@@ -60,25 +60,25 @@ namespace IRL
             Norm = 0;
         }
 
-        void Append(const PixelType& pixel, Coeff c)
+        force_inline void Append(const PixelType& pixel, Coeff c)
         {
             A += c * pixel.A;
         }
 
-        const PixelType GetSum(Coeff normalizer) const
+        force_inline const PixelType GetSum(Coeff normalizer) const
         {
             PixelType result;
             result.A = (ChannelType)(A / normalizer);
             return result;
         }
 
-        void AppendAndChangeNorm(const PixelType& pixel, Coeff c)
+        force_inline void AppendAndChangeNorm(const PixelType& pixel, Coeff c)
         {
             Append(pixel, c);
             Norm += c;
         }
 
-        const PixelType GetSum() const
+        force_inline const PixelType GetSum() const
         {
             return GetSum(Norm);
         }

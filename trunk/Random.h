@@ -31,7 +31,7 @@ namespace IRL
         static const uint32_t c = 2531011L;
         static const uint32_t m = 0x7fff;
 
-        inline uint32_t Next()
+        force_inline uint32_t Next()
         {
             _state = _state * a + c;
             return (_state >> 16) & m;

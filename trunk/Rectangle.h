@@ -19,7 +19,7 @@ namespace IRL
         }
 
         template<class OtherIntType>
-        inline bool Contains(const Point2D<OtherIntType>& p) const
+        force_inline bool Contains(const Point2D<OtherIntType>& p) const
         {
             return (p.x >= Left && p.x < Right) && (p.y >= Top && p.y < Bottom);
         }
