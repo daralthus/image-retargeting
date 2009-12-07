@@ -27,16 +27,6 @@ namespace IRL
     }
 
     template<class PixelType>
-    const PixelType& Image<PixelType>::PixelWithMirroring(int32_t x, int32_t y) const
-    {
-        if (x < 0) x = 0;
-        if (x >= Width()) x = Width() - 1;
-        if (y < 0) y = 0;
-        if (y >= Height()) y = Height() - 1;
-        return Pixel(x, y);
-    }
-
-    template<class PixelType>
     typename Image<PixelType>::Private* Image<PixelType>::Private::Create(int32_t w, int32_t h)
     {
         int sz = sizeof(Private) + w * h * sizeof(PixelType);
