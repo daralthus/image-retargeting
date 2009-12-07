@@ -28,3 +28,4 @@ HEADERS += Scaling.h Scaling.inl
 HEADERS += GaussianPyramid.h GaussianPyramid.inl
 
 HEADERS += NearestNeighborField.h NearestNeighborField.inl
+HEADERS += BidirectionalSimilarity.h BidirectionalSimilarity.inl
