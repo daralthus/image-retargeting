@@ -19,7 +19,11 @@
 #ifdef _DEBUG
 #define ASSERT assert
 #else
+#ifdef _MSC_VER
+#define ASSERT(param) (__assume(param))
+#else
 #define ASSERT(param)
+#endif
 #endif
 
 template<class T>
