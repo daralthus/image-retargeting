@@ -21,9 +21,9 @@ namespace IRL
 
         RGB(Channel c1, Channel c2, Channel c3)
         {
-            R = c1;
-            G = c2;
             B = c3;
+            G = c2;
+            R = c1;
         }
 
         RGB(uint32_t color)
@@ -32,16 +32,16 @@ namespace IRL
             int Gb = (color & 0x0000ff00) >> 8;
             int Rb = (color & 0x00ff0000) >> 16;
 
-            R = TypeTraits<Channel>::Normalize(Rb, 0, UINT8_MAX);
-            G = TypeTraits<Channel>::Normalize(Gb, 0, UINT8_MAX);
             B = TypeTraits<Channel>::Normalize(Bb, 0, UINT8_MAX);
+            G = TypeTraits<Channel>::Normalize(Gb, 0, UINT8_MAX);
+            R = TypeTraits<Channel>::Normalize(Rb, 0, UINT8_MAX);
         }
 
         uint32_t ToRGB32() const
         {
-            uint8_t Rb = TypeTraits<Channel>::Denormalize(R, 0, UINT8_MAX);
-            uint8_t Gb = TypeTraits<Channel>::Denormalize(G, 0, UINT8_MAX);
             uint8_t Bb = TypeTraits<Channel>::Denormalize(B, 0, UINT8_MAX);
+            uint8_t Gb = TypeTraits<Channel>::Denormalize(G, 0, UINT8_MAX);
+            uint8_t Rb = TypeTraits<Channel>::Denormalize(R, 0, UINT8_MAX);
             return (255 << 24) | (Rb << 16) | (Gb << 8) | Bb;
         }
 
@@ -52,14 +52,16 @@ namespace IRL
 
         static force_inline DistanceType Distance(const RGB& a, const RGB& b)
         {
-            return (a.R - b.R)*(a.R - b.R) + 
-                   (a.G - b.G)*(a.G - b.G) + 
-                   (a.B - b.B)*(a.B - b.B);
+            DistanceType DB = a.B - b.B;
+            DistanceType DG = a.G - b.G;
+            DistanceType DR = a.R - b.R;
+            return DB * DB + DG * DG + DR * DR;
         }
 
         static DistanceType DistanceUpperBound()
         {
-            return 3 * TypeTraits<Channel>::MaxValue() * TypeTraits<Channel>::MaxValue() + 1; 
+            DistanceType maxValue = TypeTraits<Channel>::MaxValue();
+            return 3 * maxValue * maxValue + 1; 
         }
     };
 
@@ -116,6 +118,6 @@ namespace IRL
         Coeff Norm;
 
     private:
-        LargerType R, G, B;
+        LargerType B, G, R;
     };
 }

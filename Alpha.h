@@ -36,7 +36,8 @@ namespace IRL
 
         static force_inline DistanceType Distance(const Alpha& a, const Alpha& b)
         {
-            return (a.A - b.A)*(a.A - b.A);
+            DistanceType DA = a.A - b.A;
+            return DA * DA;
         }
     };
 
