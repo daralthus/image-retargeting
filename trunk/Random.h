@@ -6,7 +6,7 @@ namespace IRL
     class Random
     {
     public:
-        explicit Random(uint32_t seed = 0) : _state(seed)
+        explicit Random(uint32_t seed = rand()) : _state(seed)
         { }
 
         void Seed(uint32_t seed) 

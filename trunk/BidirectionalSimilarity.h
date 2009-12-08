@@ -8,20 +8,22 @@ namespace IRL
     class BidirectionalSimilarity
     {
     public:
-        BidirectionalSimilarity();
-
-        // Make one iteration of the algorithm.
-        void Iteration(bool parallel = true);
-
-    public:
-        Image<PixelType> Source;
-        Image<Alpha8>    SourceMask;
-        Image<PixelType> Target;
-        Image<PixelType> Result;
+        Image<PixelType> Source;     // source image
+        Image<Alpha8>    SourceMask; // importance mask of the source image
+        Image<PixelType> Target;     // target image and result of the algorithm
 
         // offset fields
         OffsetField SourceToTarget; // SourceToTarget[P] = arg min_{Q \in T} D(P,Q), P \in S
         OffsetField TargetToSource; // TargetToSource[Q] = arg min_{P \in S} D(P,Q), Q \in T
+
+        double Alpha;               // completeness/coherence importance ratio, default 0.5
+        int    NNFIterations;       // how many inner NNF calculation iterations to perform, default 5
+
+    public:
+        BidirectionalSimilarity();
+
+        // Make one iteration of the algorithm.
+        void Iteration(bool parallel = true);
 
     private:
         typedef Image<Accumulator<PixelType, double> > Votes;
