@@ -9,19 +9,10 @@
 #include "Parallel.h"
 #include "Queue.h"
 #include "Alpha.h"
+#include "OffsetField.h"
 
 namespace IRL
 {
-    // Possible types of initial NNF field
-    enum InitialNNFType
-    {
-        RandomField, 
-        SmoothField,
-        PredefinedField
-    };
-
-    typedef Image<Point16> OffsetField;
-
     // NNF stands for NearestNeighborField
     template<class PixelType, bool UseSourceMask>
     class NNF
@@ -29,34 +20,30 @@ namespace IRL
         typedef typename PixelType::DistanceType DistanceType;
 
     public:
-        Image<PixelType> Source;      // B
-        Image<Alpha8>    SourceMask;  // which pixel from source is allowed to use
-        Image<PixelType> Target;      // A
-        OffsetField      Field;       // Result of the algorithm's work
-        InitialNNFType InitialOffsetField;
+        typedef Image<Alpha<DistanceType> > DistanceField;
+
+        Image<PixelType> Source;       // B
+        Image<Alpha8>    SourceMask;   // which pixel from source is allowed to use
+        Image<PixelType> Target;       // A
+
+        OffsetField      Field;        // On input: initial approximation, on output: result of the algorithm's work
+        DistanceField    D;            // Holds current best distances on output
+
+        int              SearchRadius; // Random search radius (-1 for whole image, 0 to disable random search)
 
     public:
         NNF();
 
         // Make one iteration of the algorithm.
         void Iteration(bool parallel = true);
-        // Save resulting NNF into file.
-        void Save(const std::string& path);
 
     private:
         // Initializes the algorithm before first iteration.
         void Initialize();
-        // Initializes initial NNF with random values
-        void RandomFill();
-        // Initialized initial NNF with values that arise when interpolate from target to source
-        void SmoothFill();
-
-        // If pixel gets in masked zone, tries to move it out of it
-        inline void CheckThatNotMasked(int32_t& sx, int32_t& sy);
 
         // Fills _superPatches vector
         void BuildSuperPatches();
-        // Fills _cache variable with initial value
+        // Fills D variable with initial value
         void PrepareCache(int left, int top, int right, int bottom);
 
         // Sequential complete iteration over target image's region
@@ -142,8 +129,6 @@ namespace IRL
         };
 
     private:
-        // Holds current best distances
-        Image<DistanceType> _cache;
         // Random generator. Note: in parallel mode result is also depends on thread scheduling
         Random _random;
         // Current iteration number (starts with 0)

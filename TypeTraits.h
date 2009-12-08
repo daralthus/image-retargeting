@@ -47,6 +47,47 @@ namespace IRL
         }
     };
 
+    // uint32_t
+    template<>
+    struct TypeTraits<uint32_t>
+    {
+        typedef uint64_t LargerType;
+        static uint32_t MaxValue() { return UINT32_MAX; }
+        template<class Type>
+        static uint32_t Normalize(Type from, Type minValue, Type maxValue)
+        {
+            int64_t res = (int)((from - minValue) * MaxValue() / (maxValue - minValue));
+            if (res < 0) return 0;
+            if (res > MaxValue()) return MaxValue();
+            return (uint32_t)res;
+        }
+        template<class To>
+        static To Denormalize(uint32_t from, To minValue, To maxValue)
+        {
+            return (To)(from * (maxValue - minValue) / UINT32_MAX) + minValue;
+        }
+    };
+
+    // uint64_t
+    template<>
+    struct TypeTraits<uint64_t>
+    {
+        typedef uint64_t LargerType;
+        static uint64_t MaxValue() { return UINT64_MAX; }
+        template<class Type>
+        static uint64_t Normalize(Type from, Type minValue, Type maxValue)
+        {
+            int64_t res = (int64_t)((from - minValue) * MaxValue() / (maxValue - minValue));
+            if (res < 0) return 0;
+            return (uint64_t)res;
+        }
+        template<class To>
+        static To Denormalize(uint64_t from, To minValue, To maxValue)
+        {
+            return (To)(from * (maxValue - minValue) / UINT64_MAX) + minValue;
+        }
+    };
+
     // float
     template<>
     struct TypeTraits<float>

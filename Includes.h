@@ -38,4 +38,11 @@ const T& Minimum(const T& l, const T& r) // because MSVC does not know std::min
     return (l < r) ? l : r;
 }
 
+template<class T>
+const T& Maximum(const T& l, const T& r) // because MSVC does not know std::min
+{
+    return (l > r) ? l : r;
+}
+
+
 #include "Config.h"

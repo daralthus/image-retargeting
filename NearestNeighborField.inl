@@ -4,11 +4,15 @@
 
 namespace IRL
 {
-    const int PatchSize = 7;                    // main parameter of the algorithm
-    const int HalfPatchSize = PatchSize / 2;    // handy shortcut
     const int RandomSearchInvAlpha = 2;         // how much to cut each step during random search
-    const int RandomSearchLimit = 3;            // how many pixels to examine during random search
+    const int RandomSearchLimit = 10;           // how many pixels to examine during random search
     const int SuperPatchSize = 8 * PatchSize;   // how many pixels to process in one sequential step in parallel mode
+
+    template<class PixelType>
+    typename PixelType::DistanceType PatchDistanceUpperBound()
+    {
+        return PixelType::DistanceUpperBound() * PatchSize * PatchSize;
+    }
 
     //////////////////////////////////////////////////////////////////////////
     // IterationTask implementation
@@ -110,7 +114,7 @@ namespace IRL
     template<class PixelType, bool UseSourceMask>
     NNF<PixelType, UseSourceMask>::NNF()
     {
-        InitialOffsetField = SmoothField;
+        SearchRadius = -1;
         _iteration = 0;
         _topLeftSuperPatch = NULL;
         _bottomRightSuperPatch = NULL;
@@ -128,16 +132,11 @@ namespace IRL
             ASSERT((Source.Width() == SourceMask.Width() && Source.Height() == SourceMask.Height()));
         } 
 
-        if (InitialOffsetField != PredefinedField)
-            Field = OffsetField(Target.Width(), Target.Height());
-        else
-        {
-            ASSERT(Field.IsValid());
-            ASSERT(Field.Width() == Target.Width());
-            ASSERT(Field.Height() == Target.Height());
-        }
+        ASSERT(Field.IsValid());
+        ASSERT(Field.Width() == Target.Width());
+        ASSERT(Field.Height() == Target.Height());
 
-        _cache = Image<DistanceType>(Target.Width(), Target.Height());
+        D = DistanceField(Target.Width(), Target.Height());
 
         _sourceRect.Left = HalfPatchSize;
         _sourceRect.Right = Source.Width() - HalfPatchSize;
@@ -151,21 +150,8 @@ namespace IRL
 
         BuildSuperPatches();
 
-        switch (InitialOffsetField)
-        {
-            case RandomField:
-                RandomFill();
-            break;
-            case SmoothField:
-                SmoothFill();
-            break;
-            case PredefinedField:
-            break;
-            default:
-                ASSERT(false);
-        }
-
-        _random.Seed(rand()); // TODO: control randomness (to reproduce result)
+        if (SearchRadius < 0)
+            SearchRadius = Maximum(Source.Width(), Source.Height());
     }
 
     template<class PixelType, bool UseSourceMask>
@@ -222,65 +208,6 @@ namespace IRL
     }
 
     template<class PixelType, bool UseSourceMask>
-    void NNF<PixelType, UseSourceMask>::RandomFill()
-    {
-        ASSERT(Source.IsValid());
-        ASSERT(Field.IsValid());
-
-        for (int32_t y = _targetRect.Top; y < _targetRect.Bottom; y++)
-        {
-            for (int32_t x = _targetRect.Left; x < _targetRect.Right; x++)
-            {
-                int32_t sx = _random.Uniform<int32_t>(_sourceRect.Left, _sourceRect.Right);
-                int32_t sy = _random.Uniform<int32_t>(_sourceRect.Top,  _sourceRect.Bottom);
-
-                CheckThatNotMasked(sx, sy);
-
-                Field(x, y).x = (uint16_t)(sx - x);
-                Field(x, y).y = (uint16_t)(sy - y);
-            }
-        }
-    }
-
-    template<class PixelType, bool UseSourceMask>
-    void NNF<PixelType, UseSourceMask>::SmoothFill()
-    {
-        ASSERT(Source.IsValid());
-        ASSERT(Field.IsValid());
-
-        int32_t w = Source.Width();
-        int32_t h = Source.Height();
-
-        for (int32_t y = _targetRect.Top; y < _targetRect.Bottom; y++)
-        {
-            for (int32_t x = _targetRect.Left; x < _targetRect.Right; x++)
-            {
-                int32_t sx = x * w / Field.Width();
-                int32_t sy = y * h / Field.Height();
-                
-                CheckThatNotMasked(sx, sy);
-
-                Field(x, y).x = (uint16_t)(sx - x);
-                Field(x, y).y = (uint16_t)(sy - y);
-            }
-        }
-    }
-
-    template<class PixelType, bool UseSourceMask>
-    void NNF<PixelType, UseSourceMask>::CheckThatNotMasked(int32_t& sx, int32_t& sy)
-    {
-        if (!UseSourceMask)
-            return;
-        int i = 0;
-        while (SourceMask(sx, sy).IsMasked() && i < 3)
-        {
-            sx = _random.Uniform<int32_t>(_sourceRect.Left, _sourceRect.Right);
-            sy = _random.Uniform<int32_t>(_sourceRect.Top,  _sourceRect.Bottom);
-            i++;
-        }
-    }
-
-    template<class PixelType, bool UseSourceMask>
     void NNF<PixelType, UseSourceMask>::Iteration(bool parallel = true)
     {
         if (_iteration == 0)
@@ -315,12 +242,6 @@ namespace IRL
     }
 
     template<class PixelType, bool UseSourceMask>
-    void NNF<PixelType, UseSourceMask>::Save(const std::string& path)
-    {
-        SaveImage(Field, path);
-    }
-
-    template<class PixelType, bool UseSourceMask>
     void NNF<PixelType, UseSourceMask>::Iteration(int left, int top, int right, int bottom, int iteration)
     {
         if (iteration == 0)
@@ -339,7 +260,7 @@ namespace IRL
             for (int32_t x = left; x < right; x++)
             {
                 const Point32 p(x, y);
-                _cache.Pixel(x, y) = Distance<false>(p, p + f(p));
+                D.Pixel(x, y).A = Distance<false>(p, p + f(p));
             }
         }
     }
@@ -444,7 +365,7 @@ namespace IRL
         bool changed   = false;
         Point32 best   = target;
         Point32 source = target + f(target);
-        DistanceType bestD = _cache.Pixel(target.x, target.y);
+        DistanceType bestD = D.Pixel(target.x, target.y).A;
         if (bestD == 0)
             return;
 
@@ -485,7 +406,7 @@ namespace IRL
         if (changed)
         {
             f(target) = f(best);
-            _cache.Pixel(target.x, target.y) = bestD;
+            D.Pixel(target.x, target.y).A = bestD;
         }
     }
 
@@ -493,7 +414,7 @@ namespace IRL
     inline typename NNF<PixelType, UseSourceMask>::DistanceType 
         NNF<PixelType, UseSourceMask>::MoveDistanceByDx(const Point32& target, int dx)
     {
-        DistanceType distance = _cache.Pixel(target.x, target.y);
+        DistanceType distance = D.Pixel(target.x, target.y).A;
         Point32 source = target + f(target);
         if (dx == -1)
         {
@@ -537,7 +458,7 @@ namespace IRL
     inline typename NNF<PixelType, UseSourceMask>::DistanceType 
         NNF<PixelType, UseSourceMask>::MoveDistanceByDy(const Point32& target, int dy)
     {
-        DistanceType distance = _cache.Pixel(target.x, target.y);
+        DistanceType distance = D.Pixel(target.x, target.y).A;
         Point32 source = target + f(target);
         if (dy == -1)
         {
@@ -580,8 +501,11 @@ namespace IRL
     template<class PixelType, bool UseSourceMask>
     inline void NNF<PixelType, UseSourceMask>::RandomSearch(const Point32& target)
     {
+        if (SearchRadius < 2)
+            return;
+
         Point16 offset = f(target);
-        DistanceType bestD = _cache.Pixel(target.x, target.y);
+        DistanceType bestD = D.Pixel(target.x, target.y).A;
         Point32 best(0, 0);
         bool changed = false;
         if (bestD == 0)
@@ -589,10 +513,17 @@ namespace IRL
 
         Point32 min_w = target + offset;
 
-        // uniform random sample
-        int32_t Rx = _random.Uniform<int32_t>(_sourceRect.Left, _sourceRect.Right);
-        int32_t Ry = _random.Uniform<int32_t>(_sourceRect.Top, _sourceRect.Bottom);
-        Point32 w(Rx - min_w.x, Ry - min_w.y);
+        // uniform random direction
+
+        int32_t Rx = _random.Uniform<int32_t>(-SearchRadius, +SearchRadius);
+        int32_t Ry = _random.Uniform<int32_t>(-SearchRadius, +SearchRadius);
+
+        if (Rx + min_w.x <  _sourceRect.Left)   Rx = _sourceRect.Left - min_w.x;
+        if (Rx + min_w.x >= _sourceRect.Right)  Rx = _sourceRect.Right - min_w.x - 1;
+        if (Ry + min_w.y <  _sourceRect.Top)    Ry = _sourceRect.Top - min_w.y;
+        if (Ry + min_w.y >= _sourceRect.Bottom) Ry = _sourceRect.Bottom - min_w.y - 1;
+
+        Point32 w(Rx, Ry);
 
         int i = 0;
         while (i < RandomSearchLimit)
@@ -617,7 +548,7 @@ namespace IRL
         if (changed)
         {
             f(target) = offset + Point16((int16_t)best.x, (int16_t)best.y);
-            _cache.Pixel(target.x, target.y) = bestD;
+            D.Pixel(target.x, target.y).A = bestD;
         }
     }
 
@@ -654,7 +585,7 @@ namespace IRL
         if (UseSourceMask)
         {
             if (SourceMask(sx, sy).IsMasked())
-                return PixelType::DistanceUpperBound() * PatchSize * PatchSize; // return > maximum possible distance to eliminate that pixel
+                return PatchDistanceUpperBound<PixelType>(); // return > maximum possible distance to eliminate that pixel
         }
 
         return PixelType::Distance(Source(sx, sy), Target(tx, ty));

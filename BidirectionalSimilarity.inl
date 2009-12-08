@@ -3,12 +3,12 @@
 
 namespace IRL
 {
-    const double Alpha = 0.5;
-    const int    NNFIterations = 5;
-
     template<class PixelType>
     BidirectionalSimilarity<PixelType>::BidirectionalSimilarity()
     {
+        Alpha = 0.5;
+        NNFIterations = 5;
+
         _iteration = 0;
     }
 
@@ -82,7 +82,7 @@ namespace IRL
             {
                 for (int32_t x = 0; x < Target.Width(); x++)
                 {
-                    Result(x, y) = _votes(x, y).GetSum();
+                    Target(x, y) = _votes(x, y).GetSum();
                 }
             }
         }
@@ -91,7 +91,7 @@ namespace IRL
         str << _iteration;
         std::string i = str.str();
 
-        SaveImage(Result, "Out/Result/" + i + ".bmp");
+        SaveImage(Target, "Out/Target/" + i + ".bmp");
         SaveImage(SourceToTarget,   "Out/S2T/" + i + ".bmp");
         SaveImage(TargetToSource,   "Out/T2S/" + i + ".bmp");
 
@@ -103,8 +103,6 @@ namespace IRL
     {
         ASSERT(Source.IsValid());
         ASSERT(Target.IsValid());
-
-        Result = Target;
         _votes = Votes(Target.Width(), Target.Height());
     }
 
@@ -113,9 +111,9 @@ namespace IRL
     {
         Tools::Profiler profiler("SourceToTargetNNF");
         NNF<PixelType, false> s2t;
-        s2t.Source = Result;
+        s2t.Source = Target;
         s2t.Target = Source;
-        s2t.InitialOffsetField = RandomField;
+        s2t.Field  = MakeRandomField(s2t.Target, s2t.Source);
         for (int i = 0; i < NNFIterations; i++)
             s2t.Iteration(parallel);
         SourceToTarget = s2t.Field;
@@ -125,11 +123,11 @@ namespace IRL
     void BidirectionalSimilarity<PixelType>::UpdateTargetToSourceNNF(bool parallel)
     {
         Tools::Profiler profiler("TargetToSourceNNF");
-        NNF<PixelType, false> t2s; 
+        NNF<PixelType, true> t2s; 
         t2s.Source = Source;
         t2s.SourceMask = SourceMask;
-        t2s.Target = Result;
-        t2s.InitialOffsetField = RandomField;
+        t2s.Target = Target;
+        t2s.Field  = RemoveMaskedOffsets(MakeRandomField(t2s.Target, t2s.Source), SourceMask);
         for (int i = 0; i < NNFIterations; i++)
             t2s.Iteration(parallel);
         TargetToSource = t2s.Field;
@@ -138,6 +136,7 @@ namespace IRL
     template<class PixelType>
     void BidirectionalSimilarity<PixelType>::Vote(int32_t tx, int32_t ty, int32_t sx, int32_t sy, double w)
     {
-        _votes(tx, ty).AppendAndChangeNorm(Source(sx, sy), w);
+        if (!SourceMask(sx, sy).IsMasked())
+            _votes(tx, ty).AppendAndChangeNorm(Source(sx, sy), w);
     }
 }
