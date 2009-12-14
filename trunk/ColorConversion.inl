@@ -97,6 +97,9 @@ namespace IRL
         double a = 500 * (X - Y);
         double b = 200 * (Y - Z);
 
+        ASSERT(L > Min_L - 0.1);
+        ASSERT(L < Max_L + 0.1);
+
         lab.L = TypeTraits<LabChannel>::Normalize(L, Min_L, Max_L);
         lab.a = TypeTraits<LabChannel>::Normalize(a, Min_a, Max_a); 
         lab.b = TypeTraits<LabChannel>::Normalize(b, Min_b, Max_b);

@@ -31,7 +31,9 @@ namespace IRL
             DistanceType DL = a.L - b.L;
             DistanceType Da = a.a - b.a;
             DistanceType Db = a.b - b.b;
-            return DL * DL + Da * Da + Db * Db;
+            return DL * DL * Multiplier<Channel>::L() * Multiplier<Channel>::L() + 
+                   Da * Da * Multiplier<Channel>::a() * Multiplier<Channel>::a() +
+                   Db * Db * Multiplier<Channel>::b() * Multiplier<Channel>::b();
         }
 
         static DistanceType DistanceUpperBound()
@@ -39,6 +41,26 @@ namespace IRL
             DistanceType maxValue = TypeTraits<Channel>::MaxValue();
             return 3 * maxValue * maxValue + 1; 
         }
+
+    private:
+        template<class PixelType>
+        struct Multiplier;
+
+        template<>
+        struct  Multiplier<double>
+        {
+            static double L() { return 100.0; }               // L \in [0, 100]
+            static double a() { return 96.7768 + 91.3727; }   // a \in [-91.3727, 96.7768]
+            static double b() { return 81.7356 + 125.845; }  // b \in [-125.845, 81.7356]
+        };
+
+        template<>
+        struct  Multiplier<float>
+        {
+            static float L() { return 100.0f; }               // L \in [0, 100]
+            static float a() { return 96.7768f + 91.3727f; }   // a \in [-91.3727, 96.7768]
+            static float b() { return 81.7356f + 125.845f; }  // b \in [-125.845, 81.7356]
+        };
     };
 
     typedef Lab<uint8_t>  Lab8;

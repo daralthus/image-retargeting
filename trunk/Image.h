@@ -24,6 +24,7 @@ namespace IRL
         inline const PixelType* Data() const { ASSERT(IsValid()); return &_ptr->Data[0]; }
 
         inline void Clear() { memset(Data(), 0, sizeof(PixelType) * Width() * Height()); }
+        inline void Discard() { if (_ptr) _ptr->Release(); _ptr = NULL; }
 
         force_inline PixelType& Pixel(int32_t x, int32_t y)
         {
@@ -45,6 +46,9 @@ namespace IRL
         // more compact operator versions
         force_inline PixelType& operator()(int32_t x, int32_t y) { return Pixel(x, y); }
         force_inline const PixelType& operator()(int32_t x, int32_t y) const { return Pixel(x, y); }
+
+        // Some helpers
+        uint32_t GetPatchesCount() const { return (Width() - PatchSize) * (Height() - PatchSize); }
 
     private:
         inline void MakePrivate();

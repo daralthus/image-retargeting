@@ -200,7 +200,7 @@ namespace IRL
     }
 
     template<class PixelType>
-    const Image<PixelType> ScaleDown(const Image<PixelType>& src)
+    Image<PixelType> ScaleDown(const Image<PixelType>& src)
     {
         using namespace Internal;
 
@@ -233,7 +233,7 @@ namespace IRL
     }
 
     template<class PixelType>
-    const Image<PixelType> ScaleUp(const Image<PixelType>& src)
+    Image<PixelType> ScaleUp(const Image<PixelType>& src)
     {
         using namespace Internal;
 
