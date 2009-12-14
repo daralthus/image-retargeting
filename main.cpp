@@ -5,49 +5,67 @@
 #include "NearestNeighborField.h"
 #include "ImageWithMask.h"
 #include "BidirectionalSimilarity.h"
+#include "ObjectRemoval.h"
 
 #include <direct.h>
 
 using namespace IRL;
 
 // can be RGB8 RGB16 RGBFloat RGBDouble Lab8 Lab16 LabFloat LabDouble
-typedef RGB8 Color; 
+typedef RGBDouble Color; 
 
 int main(int, char**)
 {
     Parallel::Initialize(4);
 
     _mkdir("Out");
-    _mkdir("Out/Target");
-    _mkdir("Out/S2T");
-    _mkdir("Out/T2S");
 
-    Tools::Profiler profiler("main");
+    //Image<Color> img1 = LoadImage<Color>("fly.png");
+    //Image<Color> img2 = LoadImage<Color>("res.bmp");
 
-    ImageWithMask<Color> img = LoadImageWithMask<Color>("Man.png");
+    //NNF<Color, false> s2t;
+    //s2t.Source = img1;
+    //s2t.Target = img2;
+    //s2t.Field = MakeRandomField(img1, img2);
+    //for (int i = 0; i < 20; i++)
+    //    s2t.Iteration();
 
-    BidirectionalSimilarity<Color> alg;
-    alg.Source = img.Image;
-    alg.SourceMask = img.Mask;
-    alg.Target = img.Image;
+    //NNF<Color, false> t2s;
+    //t2s.Source = img2;
+    //t2s.Target = img1;
+    //t2s.Field = MakeRandomField(img2, img1);
+    //for (int i = 0; i < 20; i++)
+    //    t2s.Iteration();
 
-    for (int i = 0; i < 1; i++)
-        alg.Iteration(false);
+    //std::cout << s2t.GetMeasure() + t2s.GetMeasure() << "\n";
 
-    //ImageWithMask<Color> img = LoadImageWithMask<Color>("Water2.png");
+    SaveImage(RemoveObject(LoadImageWithMask<Color>("sync.png")), "Out/Result.png");
+
+    //Tools::Profiler profiler("main");
+
+    //ImageWithMask<Color> img = LoadImageWithMask<Color>("Arm.png");
     //NNF<Color, true> nnf;
     //nnf.Source = img.Image;
     //nnf.SourceMask = img.Mask;
     //nnf.Target = img.Image;
-    //nnf.InitialOffsetField = RandomField;
-    //for (int i = 0; i < 100; i++)
-    //{
-    //    nnf.Iteration(true);
+    //nnf.Field = MakeSmoothField(nnf.Target, nnf.Source);
 
-    //    std::stringstream name;
-    //    name << "Out/Result/" << i << ".bmp";
-    //    nnf.Save(name.str());
+    //for (int i = 0; i < 5; i++)
+    //{
+    //    nnf.Iteration(false);
+    //    std::cout << nnf.GetMeasure() << "\n";
     //}
+    //SaveImage(nnf.Field, "Out/Result.png");
+
+    //Image<Color> test(nnf.Target.Width(), nnf.Target.Height());
+    //for (int y = 0; y < test.Height(); y++)
+    //{
+    //    for (int x = 0; x < test.Width(); x++)
+    //    {
+    //        test(x, y) = nnf.Source(x + nnf.Field(x, y).x, y + nnf.Field(x, y).y);
+    //    }
+    //}
+    //SaveImage(test, "Out/Result2.png");
 
     return 0;
 }

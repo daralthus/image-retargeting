@@ -36,6 +36,8 @@ namespace IRL
 
         // Make one iteration of the algorithm.
         void Iteration(bool parallel = true);
+        // Return \sum_{P \in Target} min_{Q \in Source} D(P, Q) * (1 / Nt)
+        double GetMeasure();
 
     private:
         // Initializes the algorithm before first iteration.
@@ -65,8 +67,8 @@ namespace IRL
         inline void RandomSearch(const Point32& target);
 
         #pragma region Propagate support methods
-        force_inline DistanceType MoveDistanceByDx(const Point32& target, int dx);
-        force_inline DistanceType MoveDistanceByDy(const Point32& target, int dy);
+        template<int Direction> force_inline DistanceType MoveDistanceByDx(const Point32& target);
+        template<int Direction> force_inline DistanceType MoveDistanceByDy(const Point32& target);
 
         template<int Direction> bool CheckX(int x); // no implementation here
         template<> inline bool CheckX<-1>(int x) { return x > _targetRect.Left; }
@@ -146,6 +148,12 @@ namespace IRL
         SuperPatch* _bottomRightSuperPatch;
         Mutex _lock;
     };
+
+    template<class PixelType>
+    typename PixelType::DistanceType PatchDistanceUpperBound()
+    {
+        return PixelType::DistanceUpperBound() * PatchSize * PatchSize;
+    }
 }
 
 #include "NearestNeighborField.inl"

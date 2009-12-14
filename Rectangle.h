@@ -24,6 +24,11 @@ namespace IRL
             return (p.x >= Left && p.x < Right) && (p.y >= Top && p.y < Bottom);
         }
 
+        const IntType Area()
+        {
+            return (Right - Left) * (Bottom - Top);
+        }
+
     public:
         IntType Left;
         IntType Right;

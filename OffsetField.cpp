@@ -41,6 +41,9 @@ namespace IRL
 
     OffsetField& RemoveMaskedOffsets(OffsetField& field, const Image<Alpha8>& mask, int iterations)
     {
+        if (!mask.IsValid())
+            return field;
+
         Random random;
         int left = HalfPatchSize;
         int right = mask.Width() - HalfPatchSize;
@@ -55,15 +58,60 @@ namespace IRL
                 if (mask(sx, sy).IsMasked())
                 {
                     int i = 0;
+                    int32_t nsx = sx;
+                    int32_t nsy = sy;
                     do 
                     {
-                        sx = random.Uniform<int32_t>(left, right);
-                        sy = random.Uniform<int32_t>(top,  bottom);
+                        nsx += random.Uniform<int32_t>(-10, 10);
+                        nsy += random.Uniform<int32_t>(-10, 10);
+                        if (nsx < left) nsx = left;
+                        if (nsx >= right) nsx = right - 1;
+                        if (nsy < top) nsy = top;
+                        if (nsy >= bottom) nsy = bottom - 1;
                         i++;
-                    } while (mask(sx, sy).IsMasked() && i < iterations + 1);
-                    field(x, y).x = (uint16_t)(sx - x);
-                    field(x, y).y = (uint16_t)(sy - y);
+                    } while (mask(nsx, nsy).IsMasked() && i < iterations + 1);
+                    field(x, y).x = (uint16_t)(nsx - x);
+                    field(x, y).y = (uint16_t)(nsy - y);
                 }
+            }
+        }
+        return field;
+    }
+
+    OffsetField& ClampField(OffsetField& field, int sourceWidth, int sourceHeight)
+    {
+        for (int y = HalfPatchSize; y < field.Height() - HalfPatchSize; y++)
+        {
+            for (int x = HalfPatchSize; x < field.Width() - HalfPatchSize; x++)
+            {
+                int sx = x + field(x, y).x;
+                int sy = y + field(x, y).y;
+                if (sx < HalfPatchSize) sx = HalfPatchSize;
+                if (sx >= sourceWidth - HalfPatchSize) sx = sourceWidth - HalfPatchSize - 1;
+                if (sy < HalfPatchSize) sy = HalfPatchSize;
+                if (sy >= sourceHeight - HalfPatchSize) sy = sourceHeight - HalfPatchSize - 1;
+                field(x, y).x = sx - x;
+                field(x, y).y = sy - y;
+            }
+        }
+        return field;
+    }
+
+    extern OffsetField& ShakeField(OffsetField& field, int shakeRadius, int sourceWidth, int sourceHeight)
+    {
+        Random random;
+        for (int y = HalfPatchSize; y < field.Height() - HalfPatchSize; y++)
+        {
+            for (int x = HalfPatchSize; x < field.Width() - HalfPatchSize; x++)
+            {
+                int sx = x + field(x, y).x + random.Uniform<int>(-shakeRadius, +shakeRadius);
+                int sy = y + field(x, y).y + random.Uniform<int>(-shakeRadius, +shakeRadius);
+                if (sx < HalfPatchSize) sx = HalfPatchSize;
+                if (sx >= sourceWidth - HalfPatchSize) sx = sourceWidth - HalfPatchSize - 1;
+                if (sy < HalfPatchSize) sy = HalfPatchSize;
+                if (sy >= sourceHeight - HalfPatchSize) sy = sourceHeight - HalfPatchSize - 1;
+                field(x, y).x = sx - x;
+                field(x, y).y = sy - y;
             }
         }
         return field;

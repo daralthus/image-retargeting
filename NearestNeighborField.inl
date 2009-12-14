@@ -6,13 +6,7 @@ namespace IRL
 {
     const int RandomSearchInvAlpha = 2;         // how much to cut each step during random search
     const int RandomSearchLimit = 10;           // how many pixels to examine during random search
-    const int SuperPatchSize = 8 * PatchSize;   // how many pixels to process in one sequential step in parallel mode
-
-    template<class PixelType>
-    typename PixelType::DistanceType PatchDistanceUpperBound()
-    {
-        return PixelType::DistanceUpperBound() * PatchSize * PatchSize;
-    }
+    const int SuperPatchSize = 2 * PatchSize;   // how many pixels to process in one sequential step in parallel mode
 
     //////////////////////////////////////////////////////////////////////////
     // IterationTask implementation
@@ -375,7 +369,7 @@ namespace IRL
             const Point32 newSource = target + f(pointToTest);
             if (source != newSource && _sourceRect.Contains(newSource))
             {
-                DistanceType distance = MoveDistanceByDx(pointToTest, Direction);
+                DistanceType distance = MoveDistanceByDx<Direction>(pointToTest);
                 source = newSource;
                 if (distance < bestD)
                 {
@@ -392,7 +386,7 @@ namespace IRL
             const Point32 newSource = target + f(pointToTest);
             if (source != newSource && _sourceRect.Contains(newSource))
             {
-                DistanceType distance = MoveDistanceByDy(pointToTest, Direction);
+                DistanceType distance = MoveDistanceByDy<Direction>(pointToTest);
                 source = newSource;
                 if (distance < bestD)
                 {
@@ -411,42 +405,39 @@ namespace IRL
     }
 
     template<class PixelType, bool UseSourceMask>
-    inline typename NNF<PixelType, UseSourceMask>::DistanceType 
-        NNF<PixelType, UseSourceMask>::MoveDistanceByDx(const Point32& target, int dx)
+    template<int Direction>
+    typename NNF<PixelType, UseSourceMask>::DistanceType 
+        NNF<PixelType, UseSourceMask>::MoveDistanceByDx(const Point32& target)
     {
         DistanceType distance = D.Pixel(target.x, target.y).A;
         Point32 source = target + f(target);
-        if (dx == -1)
+        if (Direction == -1)
         {
             // move right
             for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
             {
-                distance -= PixelDistance(
-                    source.x - HalfPatchSize, source.y + y,
-                    target.x - HalfPatchSize, target.y + y);
+                distance += PixelDistance(source.x + HalfPatchSize + 1, source.y + y,
+                                          target.x + HalfPatchSize + 1, target.y + y);
             }
             for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
             {
-                distance += PixelDistance(
-                    source.x + HalfPatchSize + 1, source.y + y,
-                    target.x + HalfPatchSize + 1, target.y + y);
+                distance -= PixelDistance(source.x - HalfPatchSize, source.y + y,
+                                          target.x - HalfPatchSize, target.y + y);
             }
             return distance;
         }
-        if (dx ==  1)
+        if (Direction ==  1)
         {
             // move left
             for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
             {
-                distance -= PixelDistance(
-                    source.x + HalfPatchSize, source.y + y,
-                    target.x + HalfPatchSize, target.y + y);
+                distance += PixelDistance(source.x - HalfPatchSize - 1, source.y + y,
+                                          target.x - HalfPatchSize - 1, target.y + y);
             }
             for (int y = -HalfPatchSize; y <= HalfPatchSize; y++)
             {
-                distance += PixelDistance(
-                    source.x - HalfPatchSize - 1, source.y + y,
-                    target.x - HalfPatchSize - 1, target.y + y);
+                distance -= PixelDistance(source.x + HalfPatchSize, source.y + y,
+                                          target.x + HalfPatchSize, target.y + y);
             }
             return distance;
         }
@@ -455,42 +446,40 @@ namespace IRL
     }
 
     template<class PixelType, bool UseSourceMask>
-    inline typename NNF<PixelType, UseSourceMask>::DistanceType 
-        NNF<PixelType, UseSourceMask>::MoveDistanceByDy(const Point32& target, int dy)
+    template<int Direction>
+    typename NNF<PixelType, UseSourceMask>::DistanceType 
+        NNF<PixelType, UseSourceMask>::MoveDistanceByDy(const Point32& target)
     {
         DistanceType distance = D.Pixel(target.x, target.y).A;
         Point32 source = target + f(target);
-        if (dy == -1)
+        if (Direction == -1)
         {
             // move up
             for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
             {
-                distance -= PixelDistance(
-                    source.x + x, source.y - HalfPatchSize,
-                    target.x + x, target.y - HalfPatchSize);
+                distance += PixelDistance(source.x + x, source.y + HalfPatchSize + 1,
+                                          target.x + x, target.y + HalfPatchSize + 1);
+                            
             }
             for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
             {
-                distance += PixelDistance(
-                    source.x + x, source.y + HalfPatchSize + 1,
-                    target.x + x, target.y + HalfPatchSize + 1);
+                distance -= PixelDistance(source.x + x, source.y - HalfPatchSize,
+                                          target.x + x, target.y - HalfPatchSize);
             }
             return distance;
         }
-        if (dy ==  1)
+        if (Direction ==  1)
         {
             // move down
             for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
             {
-                distance -= PixelDistance(
-                    source.x + x, source.y + HalfPatchSize,
-                    target.x + x, target.y + HalfPatchSize);
+                distance += PixelDistance(source.x + x, source.y - HalfPatchSize - 1,
+                                          target.x + x, target.y - HalfPatchSize - 1);
             }
             for (int x = -HalfPatchSize; x <= HalfPatchSize; x++)
             {
-                distance += PixelDistance(
-                    source.x + x, source.y - HalfPatchSize - 1,
-                    target.x + x, target.y - HalfPatchSize - 1);
+                distance -= PixelDistance(source.x + x, source.y + HalfPatchSize,
+                                          target.x + x, target.y + HalfPatchSize);
             }
             return distance;
         }
@@ -587,7 +576,20 @@ namespace IRL
             if (SourceMask(sx, sy).IsMasked())
                 return PatchDistanceUpperBound<PixelType>(); // return > maximum possible distance to eliminate that pixel
         }
-
         return PixelType::Distance(Source(sx, sy), Target(tx, ty));
+    }
+
+    template<class PixelType, bool UseSourceMask>
+    double NNF<PixelType, UseSourceMask>::GetMeasure()
+    {
+        double result = 0;
+        for (int32_t y = _targetRect.Top; y < _targetRect.Bottom; y++)
+        {
+            for (int32_t x = _targetRect.Left; x < _targetRect.Right; x++)
+            {
+                result += D(x, y).A;
+            }
+        }
+        return result / (PatchSize * PatchSize) / _targetRect.Area();
     }
 }
