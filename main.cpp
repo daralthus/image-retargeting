@@ -12,7 +12,7 @@
 using namespace IRL;
 
 // can be RGB8 RGB16 RGBFloat RGBDouble Lab8 Lab16 LabFloat LabDouble
-typedef RGBDouble Color; 
+typedef RGB8 Color; 
 
 int main(int, char**)
 {
@@ -39,9 +39,9 @@ int main(int, char**)
 
     //std::cout << s2t.GetMeasure() + t2s.GetMeasure() << "\n";
 
-    SaveImage(RemoveObject(LoadImageWithMask<Color>("sync.png")), "Out/Result.png");
-
-    //Tools::Profiler profiler("main");
+    clock_t start = clock();
+    SaveImage(RemoveObject(LoadImageWithMask<Color>("water3.png")), "Out/Result.png");
+    std::cout << "Total time: " << clock() - start << "\n";
 
     //ImageWithMask<Color> img = LoadImageWithMask<Color>("Arm.png");
     //NNF<Color, true> nnf;
@@ -66,6 +66,17 @@ int main(int, char**)
     //    }
     //}
     //SaveImage(test, "Out/Result2.png");
+
+    //SaveImage(ScaleUp(ScaleDown(LoadImage<Color>("sync.png"))), "Out/Result.png");
+
+    //Image<Color> img = LoadImage<Color>("checker.png");
+    //for (int i = 0; i < 3; i++)
+    //{
+    //    img = ScaleDown(img);
+    //    std::ostringstream s;
+    //    s << "Out/S" << i << ".png";
+    //    SaveImage(img, s.str());
+    //}
 
     return 0;
 }

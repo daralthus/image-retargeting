@@ -27,6 +27,14 @@ namespace IRL
     }
 
     template<class PixelType>
+    bool SaveImage(const ImageWithMask<PixelType>& image, const std::string& path)
+    {
+        ImageWithMask<RGB8> result;
+        Convert(result, image);
+        return SaveImage(result, path);
+    }
+
+    template<class PixelType>
     bool SaveGaussianPyramid(const GaussianPyramid<PixelType>& image, const std::string& path)
     {
         GaussianPyramid<RGB8> result;

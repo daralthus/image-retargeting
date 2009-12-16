@@ -73,6 +73,29 @@ namespace IRL
         return img.save(QString::fromStdString(path));
     }
 
+    template<> 
+    bool SaveImage(const ImageWithMask<RGB8>& image, const std::string& path)
+    {
+        ASSERT(image.Image.Width() == image.Mask.Width());
+        ASSERT(image.Image.Height() == image.Mask.Height());
+
+        Tools::Profiler profiler("SaveImage");
+        QImage img(image.Image.Width(), image.Image.Height(), QImage::Format_ARGB32);
+        QRgb* bits = (QRgb*)img.bits();
+        const RGB8* color = image.Image.Data();
+        const Alpha8* alpha = image.Mask.Data();
+        const RGB8* end = color + image.Image.Width() * image.Image.Height();
+        while (color != end)
+        {
+            QRgb rgb = color->ToRGB32();
+            *bits = qRgba(qRed(rgb), qGreen(rgb), qBlue(rgb), alpha->A);
+            ++color;
+            ++alpha;
+            ++bits;
+        }
+        return img.save(QString::fromStdString(path));
+    }
+
     template<>
     bool SaveGaussianPyramid(const GaussianPyramid<RGB8>& pyramid, const std::string& filePath)
     {

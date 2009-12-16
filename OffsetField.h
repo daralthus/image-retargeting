@@ -10,7 +10,7 @@ namespace IRL
 
     extern OffsetField MakeRandomField(int width, int height, int sourceWidth, int sourceHeight);
     extern OffsetField MakeSmoothField(int width, int height, int sourceWidth, int sourceHeight);
-    extern OffsetField& RemoveMaskedOffsets(OffsetField& field, const Image<Alpha8>& mask, int iterations = 30);
+    extern OffsetField& RemoveMaskedOffsets(OffsetField& field, const Image<Alpha8>& mask, int iterations = 40);
     extern OffsetField& ClampField(OffsetField& field, int sourceWidth, int sourceHeight);
     extern OffsetField& ShakeField(OffsetField& field, int shakeRadius, int sourceWidth, int sourceHeight);
 

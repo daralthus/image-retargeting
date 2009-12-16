@@ -189,11 +189,20 @@ namespace IRL
 
             inline void ProcessLine(int y)
             {
-                int sy = y / 2;
+                int sy1 = y / 2;
+                int sy2 = Minimum<int>(sy1 + 1, S.Src->Height() - 1);
+                int beta  = y - 2 * sy1;
                 for (int x = 0; x < S.Dst->Width(); x++)
                 {
-                    int sx = x / 2;
-                    S.Dst->Pixel(x, y) = S.Src->Pixel(sx, sy);
+                    int sx1 = x / 2;
+                    int sx2 = Minimum<int>(sx1 + 1, S.Src->Width() - 1);
+                    int alpha = x - 2 * sx1;
+                    Accumulator<PixelType, int> accum;
+                    accum.Append(S.Src->Pixel(sx1, sy1), (2 - alpha) * (2 - beta));
+                    accum.Append(S.Src->Pixel(sx2, sy1), (    alpha) * (2 - beta));
+                    accum.Append(S.Src->Pixel(sx2, sy2), (    alpha) * (    beta));
+                    accum.Append(S.Src->Pixel(sx1, sy2), (2 - alpha) * (    beta));
+                    S.Dst->Pixel(x, y) = accum.GetSum(4);
                 }
             }
         };

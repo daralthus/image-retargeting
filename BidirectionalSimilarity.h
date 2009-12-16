@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NearestNeighborField.h"
+#include "TypeTraits.h"
 
 namespace IRL
 {
@@ -22,9 +23,6 @@ namespace IRL
         int    NNFIterations;        // how many inner NNF calculation iterations to perform, default 5
         int    SearchRadius;         // random search radius in patch match algorithm
 
-        double Completeness;          // completeness term in dissimilarity measure
-        double Coherency;             // coherency term in dissimilarity measure
-
         std::string DebugPath;        // where to put debug files
 
     public:
@@ -36,7 +34,8 @@ namespace IRL
         void Reset();
 
     private:
-        typedef Image<Accumulator<PixelType, double> > Votes;
+        typedef typename TypeTraits<typename PixelType::ChannelType>::LargerType VoteQuantityType;
+        typedef Image<Accumulator<PixelType, VoteQuantityType> > Votes;
 
         // Initializes algorithm before first iteration
         inline void Initialize();
@@ -44,12 +43,28 @@ namespace IRL
         inline void UpdateSourceToTargetNNF(bool parallel);
         // Updates TargetToSource
         inline void UpdateTargetToSourceNNF(bool parallel);
+        // Coherency votes
+        inline void VoteTargetToSource();
+        // Completeness votes
+        inline void VoteSourceToTarget();
+        // Calculate results of the voting
+        inline void CollectVotes();
+        // Saves debug images
+        inline void DebugOutput();
+
         // Vote for pixel with weight
-        force_inline void Vote(int32_t tx, int32_t ty, int32_t sx, int32_t sy, double w);
+        force_inline void Vote(int32_t tx, int32_t ty, int32_t sx, int32_t sy, VoteQuantityType w);
 
     private:
         // iteration number, start with 0
         int _iteration; 
+        
+        // weight of the votes
+        VoteQuantityType _wcoherent;
+        VoteQuantityType _wcomplete;
+
+        double Completeness;          // completeness term in dissimilarity measure
+        double Coherency;             // coherency term in dissimilarity measure
 
         // used in voting
         Votes _votes;

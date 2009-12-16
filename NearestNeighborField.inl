@@ -499,6 +499,7 @@ namespace IRL
         bool changed = false;
         if (bestD == 0)
             return;
+        bestD = bestD / 2; // use randomly searched value only it is significantly better than propagated one
 
         Point32 min_w = target + offset;
 
