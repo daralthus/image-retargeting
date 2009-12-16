@@ -24,6 +24,7 @@ namespace IRL
         {
             return (To)(from * (maxValue - minValue) / MaxValue()) + minValue;
         }
+        static const bool IsInteger = true;
     };
 
     // uint16_t
@@ -45,6 +46,7 @@ namespace IRL
         {
             return (To)(from * (maxValue - minValue) / UINT16_MAX) + minValue;
         }
+        static const bool IsInteger = true;
     };
 
     // uint32_t
@@ -66,6 +68,7 @@ namespace IRL
         {
             return (To)(from * (maxValue - minValue) / UINT32_MAX) + minValue;
         }
+        static const bool IsInteger = true;
     };
 
     // uint64_t
@@ -86,6 +89,7 @@ namespace IRL
         {
             return (To)(from * (maxValue - minValue) / UINT64_MAX) + minValue;
         }
+        static bool IsInteger() { return true; }
     };
 
     // float
@@ -104,6 +108,7 @@ namespace IRL
         {
             return (To)(from * (maxValue - minValue) / MaxValue()) + minValue;
         }
+        static const bool IsInteger = false;
     };
 
     // double
@@ -122,5 +127,6 @@ namespace IRL
         {
             return (To)(from * (maxValue - minValue) / MaxValue()) + minValue;
         }
+        static const bool IsInteger = false;
     };
 }

@@ -62,8 +62,8 @@ namespace IRL
     void Convert(RGB8& to, const Point16& from);
 
     // enable accumulation for scaling
-    template<class Coeff, class IntType>
-    class Accumulator<Point2D<IntType>, Coeff>
+    template<class Coeff>
+    class Accumulator<Point16, Coeff>
     {
     public:
         Accumulator()
@@ -73,27 +73,27 @@ namespace IRL
             Norm = 0;
         }
 
-        void Append(const Point2D& pixel, Coeff c)
+        void Append(const Point16& pixel, Coeff c)
         {
             x += c * pixel.x;
             y += c * pixel.y;
         }
 
-        const Point2D GetSum(Coeff normalizer)
+        const Point16 GetSum(Coeff normalizer)
         {
-            Point2D result;
+            Point16 result;
             result.x = (uint16_t)(x / normalizer);
             result.y = (uint16_t)(y / normalizer);
             return result;
         }
 
-        force_inline void AppendAndChangeNorm(const Point2D& pixel, Coeff c)
+        force_inline void AppendAndChangeNorm(const Point16& pixel, Coeff c)
         {
             Append(pixel, c);
             Norm += c;
         }
 
-        force_inline const Point2D GetSum() const
+        force_inline const Point16 GetSum() const
         {
             return GetSum(Norm);
         }
