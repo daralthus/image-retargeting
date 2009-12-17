@@ -3,6 +3,7 @@
 
 #include "Tools/DragTool.h"
 #include "Tools/ZoomTool.h"
+#include "Tools/PolygonTool.h"
 
 MainWindow::MainWindow()
 {
@@ -12,8 +13,7 @@ MainWindow::MainWindow()
     setupMenu();
     setupToolbar();
     setupStatusBar();
-
-    selectTool(_tools[0]);
+    resize(600, 400);
 }
 
 void MainWindow::setupWorkingArea()
@@ -41,6 +41,7 @@ void MainWindow::setupTools()
     _tools << new DragTool(this);
     _tools << new ZoomTool(this, ZoomTool::ZoomIn);
     _tools << new ZoomTool(this, ZoomTool::ZoomOut);
+    _tools << new PolygonTool(this);
 }
 
 void MainWindow::setupMenu()
@@ -52,8 +53,14 @@ void MainWindow::setupMenu()
     fileMenu->addAction(tr("&Exit"), this, SLOT(close()));
 
     QMenu* toolsMenu = menuBar()->addMenu(tr("&Tools"));
+    int lastCategory = -1;
     for (int i = 0; i < _tools.size(); ++i)
     {
+        if (lastCategory == -1)
+            lastCategory = _tools[i]->category();
+        if (lastCategory != _tools[i]->category())
+            toolsMenu->addSeparator();
+        lastCategory = _tools[i]->category();
         QAction* action = _tools[i]->action();
         if (action)
             toolsMenu->addAction(action);
@@ -65,9 +72,12 @@ void MainWindow::setupToolbar()
     QToolBar* fileToolBar = addToolBar(tr("File"));
     fileToolBar->addAction(_openAction);
     fileToolBar->addAction(_saveAction);
-    fileToolBar->addSeparator();
+    int lastCategory = -1;
     for (int i = 0; i < _tools.size(); ++i)
     {
+        if (_tools[i]->category() != lastCategory)
+            fileToolBar->addSeparator();
+        lastCategory = _tools[i]->category();
         QAction* action = _tools[i]->action();
         if (action)
             fileToolBar->addAction(action);
@@ -87,6 +97,7 @@ void MainWindow::open()
     if (fileName.isEmpty())
         return;
     _workingArea->open(QImage(fileName));
+    selectTool(_tools[0]);
 }
 
 void MainWindow::save()

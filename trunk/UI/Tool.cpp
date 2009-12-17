@@ -8,6 +8,7 @@ Tool::Tool(MainWindow* window) : QObject(window)
 { 
     _window = window;
     _action = NULL;
+    _category = 0;
 }
 
 void Tool::initialize(const QString& name, const QIcon& icon, const QCursor& cursor)

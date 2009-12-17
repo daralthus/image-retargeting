@@ -9,5 +9,6 @@
     <file>images/zoom-in-cursor.png</file>
     <file>images/zoom-out.png</file>
     <file>images/zoom-out-cursor.png</file>
+    <file>images/polygon.png</file>
   </qresource>
 </RCC>
