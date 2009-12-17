@@ -1,31 +1,31 @@
-CONFIG += qt console
+CONFIG += qt
 debug {
   CONFIG += debug
 }
-SOURCES += main.cpp
 
-PRECOMPILED_HEADER = Includes.h
+SOURCES += UI/main.cpp
+PRECOMPILED_HEADER = UI/Includes.h
 
-HEADERS += pstdint.h Config.h RefCounted.h
-HEADERS += Convert.h Accumulator.h TypeTraits.h Random.h Rectangle.h
+HEADERS += IRL/pstdint.h IRL/Config.h IRL/RefCounted.h
+HEADERS += IRL/Convert.h IRL/Accumulator.h IRL/TypeTraits.h IRL/Random.h IRL/Rectangle.h
 
-HEADERS += IO.h IO.inl
-SOURCES += IO.cpp
+HEADERS += IRL/IO.h IRL/IO.inl
+SOURCES += IRL/IO.cpp
 
-HEADERS += Profiler.h
-SOURCES += Profiler.cpp
+HEADERS += IRL/Profiler.h
+SOURCES += IRL/Profiler.cpp
 
-HEADERS += Threading.h ThreadingQt.h Parallel.h Queue.h Parallel.inl
-SOURCES += Parallel.cpp
+HEADERS += IRL/Threading.h IRL/ThreadingQt.h IRL/Parallel.h IRL/Queue.h IRL/Parallel.inl
+SOURCES += IRL/Parallel.cpp
 
-HEADERS += Point2D.h
-SOURCES += Point2D.cpp
+HEADERS += IRL/Point2D.h
+SOURCES += IRL/Point2D.cpp
 
-HEADERS += RGB.h Lab.h Alpha.h ColorConversion.h ColorConversion.inl
+HEADERS += IRL/RGB.h IRL/Lab.h IRL/Alpha.h IRL/ColorConversion.h IRL/ColorConversion.inl
 
-HEADERS += Image.h ImageConversion.h ImageWithMask.h Image.inl ImageConversion.inl ImageWithMask.inl
-HEADERS += Scaling.h Scaling.inl
-HEADERS += GaussianPyramid.h GaussianPyramid.inl
+HEADERS += IRL/Image.h IRL/ImageConversion.h IRL/ImageWithMask.h IRL/Image.inl IRL/ImageConversion.inl IRL/ImageWithMask.inl
+HEADERS += IRL/Scaling.h IRL/Scaling.inl
+HEADERS += IRL/GaussianPyramid.h IRL/GaussianPyramid.inl
 
-HEADERS += NearestNeighborField.h NearestNeighborField.inl
-HEADERS += BidirectionalSimilarity.h BidirectionalSimilarity.inl
+HEADERS += IRL/NearestNeighborField.h IRL/NearestNeighborField.inl
+HEADERS += IRL/BidirectionalSimilarity.h IRL/BidirectionalSimilarity.inl
