@@ -23,7 +23,7 @@ SOURCES += Point2D.cpp
 
 HEADERS += RGB.h Lab.h Alpha.h ColorConversion.h ColorConversion.inl
 
-HEADERS += Image.h ImageConversion.h ImageWithMask.h Image.inl ImageConversion.inl
+HEADERS += Image.h ImageConversion.h ImageWithMask.h Image.inl ImageConversion.inl ImageWithMask.inl
 HEADERS += Scaling.h Scaling.inl
 HEADERS += GaussianPyramid.h GaussianPyramid.inl
 
