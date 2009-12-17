@@ -13,7 +13,13 @@ public:
 protected:
     virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
     {
-        _backgroundBrush.setTransform(painter->transform().inverted());
+        QTransform t = painter->transform();
+        qreal scaleX = sqrt(t.m11()*t.m11() + t.m12()*t.m12());
+        qreal scaleY = sqrt(t.m21()*t.m21() + t.m22()*t.m22());
+        QTransform brushTransform;
+        brushTransform.scale(1.0 / scaleX, 1.0 / scaleY);
+        _backgroundBrush.setTransform(brushTransform);
+
         painter->fillRect(option->exposedRect, _backgroundBrush);
         QGraphicsPixmapItem::paint(painter, option, widget);
     }
@@ -29,8 +35,14 @@ WorkingArea::WorkingArea(MainWindow* window) : QGraphicsView(window)
     setScene(&_scene);
 }
 
+QGraphicsItem* WorkingArea::mainItem() const
+{
+    return _item;
+}
+
 void WorkingArea::open(const QImage& image)
 {
+    selectedTool()->reset();
     resetTransform();
     _scene.clear();
     _scene.setSceneRect(image.rect());
@@ -79,4 +91,9 @@ void WorkingArea::zoom(const QPoint& center, double factor)
         return;
     setTransform(transform().scale(factor, factor));
     centerOn(mapToScene(center));
+}
+
+void WorkingArea::processPolygon(const QPolygonF& polygon)
+{
+    // TODO
 }

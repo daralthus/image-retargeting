@@ -45,3 +45,6 @@ SOURCES += UI/Tools/DragTool.cpp
 
 HEADERS += UI/Tools/ZoomTool.h
 SOURCES += UI/Tools/ZoomTool.cpp
+
+HEADERS += UI/Tools/PolygonTool.h
+SOURCES += UI/Tools/PolygonTool.cpp

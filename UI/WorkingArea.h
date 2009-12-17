@@ -12,10 +12,14 @@ class WorkingArea :
     friend class PixmapItem;
 public:
     WorkingArea(MainWindow* window);
+    QGraphicsScene& scene() { return _scene; }
+    const QGraphicsScene& scene() const { return _scene; }
+    QGraphicsItem* mainItem() const;
 
 public slots:
     void open(const QImage& image);
     void zoom(const QPoint& center, double factor);
+    void processPolygon(const QPolygonF& polygon);
 
 protected:
     virtual void mouseDoubleClickEvent(QMouseEvent *event);
