@@ -5,7 +5,7 @@
 namespace IRL
 {
     const int RandomSearchInvAlpha = 2;         // how much to cut each step during random search
-    const int RandomSearchLimit = 10;           // how many pixels to examine during random search
+    const int RandomSearchLimit = 80;           // how many pixels to examine during random search
     const int SuperPatchSize = 2 * PatchSize;   // how many pixels to process in one sequential step in parallel mode
 
     //////////////////////////////////////////////////////////////////////////
@@ -144,8 +144,9 @@ namespace IRL
 
         BuildSuperPatches();
 
-        if (SearchRadius < 0)
-            SearchRadius = Maximum(Source.Width(), Source.Height());
+        int maxSR = Maximum(Source.Width(), Source.Height());
+        if (SearchRadius < 0 || SearchRadius > maxSR)
+            SearchRadius = maxSR;
     }
 
     template<class PixelType, bool UseSourceMask>
@@ -499,7 +500,7 @@ namespace IRL
         bool changed = false;
         if (bestD == 0)
             return;
-        bestD = bestD / 2; // use randomly searched value only it is significantly better than propagated one
+        bestD = bestD / 2;
 
         Point32 min_w = target + offset;
 

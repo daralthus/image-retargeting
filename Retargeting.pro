@@ -13,6 +13,9 @@ HEADERS += IRL/Convert.h IRL/Accumulator.h IRL/TypeTraits.h IRL/Random.h IRL/Rec
 HEADERS += IRL/IO.h IRL/IO.inl
 SOURCES += IRL/IO.cpp
 
+HEADERS += IRL/Parameters.h
+SOURCES += IRL/Parameters.cpp
+
 HEADERS += IRL/Profiler.h
 SOURCES += IRL/Profiler.cpp
 
