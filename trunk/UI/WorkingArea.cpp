@@ -1,6 +1,7 @@
 #include "Includes.h"
 #include "WorkingArea.h"
 #include "MainWindow.h"
+#include "ObjectRemoval.h"
 
 class WorkingAreaItem : public QGraphicsPixmapItem
 {
@@ -33,6 +34,8 @@ WorkingArea::WorkingArea(MainWindow* window) : QGraphicsView(window)
     _item = NULL;
     _window = window;
     setScene(&_scene);
+
+    connect(&_checker, SIGNAL(timeout()), this, SLOT(checkUpdateQueue()));
 }
 
 QGraphicsItem* WorkingArea::mainItem() const
@@ -42,11 +45,23 @@ QGraphicsItem* WorkingArea::mainItem() const
 
 void WorkingArea::open(const QImage& image)
 {
+    _originalSize = image.size();
+    double lnw = ceil(log((double)image.width()) / log(2.0));
+    _powerOfTwoSize.setWidth(pow(2, lnw));
+    double lnh = ceil(log((double)image.height()) / log(2.0));
+    _powerOfTwoSize.setHeight(pow(2, lnh));
+
+    _scaleX = qreal(_originalSize.width()) / _powerOfTwoSize.width();
+    _scaleY = qreal(_originalSize.height()) / _powerOfTwoSize.height();
+
+    _workingCopy = image.scaled(_powerOfTwoSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
     selectedTool()->reset();
     resetTransform();
     _scene.clear();
-    _scene.setSceneRect(image.rect());
-    _item = new WorkingAreaItem(QPixmap::fromImage(image));
+    _item = new WorkingAreaItem(QPixmap::fromImage(_workingCopy));
+    _item->setTransform(QTransform::fromScale(_scaleX, _scaleY));
+    _scene.setSceneRect(0, 0, _originalSize.width(), _originalSize.height());
     _scene.addItem(_item);
 }
 
@@ -95,5 +110,53 @@ void WorkingArea::zoom(const QPoint& center, double factor)
 
 void WorkingArea::processPolygon(const QPolygonF& polygon)
 {
-    // TODO
+    qreal scaleX = qreal(_powerOfTwoSize.width()) / _originalSize.width();
+    qreal scaleY = qreal(_powerOfTwoSize.height()) / _originalSize.height();
+
+    _window->setBusy(true);
+    _window->setProgress(true, 0, 100);
+    _checker.start(50);
+    _window->enqueueWorkItem(new ObjectRemovalWorkItem(this, _workingCopy, polygon, scaleX, scaleY));
+}
+
+void WorkingArea::pushUpdate(const QImage& img, const QPolygonF& mask, int progress, bool final)
+{
+    QMutexLocker locker(&_updatesLock);
+    _updates.push_back(Update(img, mask, progress, final));
+}
+
+void WorkingArea::checkUpdateQueue()
+{
+    _updatesLock.lock();
+    if (_updates.empty())
+    {
+        _updatesLock.unlock();
+        return;
+    }
+    Update update = _updates.front();
+    _updates.pop_front();
+    _updatesLock.unlock();
+
+    displayUpdate(update);
+    if (update.Final)
+        _checker.stop();
+}
+
+void WorkingArea::displayUpdate(const Update& update)
+{
+    if (update.Final)
+    {
+        _workingCopy = update.Image;
+        _item->setPixmap(QPixmap::fromImage(_workingCopy));
+        _item->setTransform(QTransform::fromScale(_scaleX, _scaleY));
+        _window->setBusy(false);
+        _window->setProgress(false, 100, 100);
+    } else
+    {
+        _item->setPixmap(QPixmap::fromImage(update.Image));
+        _item->setTransform(QTransform::fromScale(_powerOfTwoSize.width() / update.Image.width(), 
+            _powerOfTwoSize.height() / update.Image.height()));
+        _item->setTransform(QTransform::fromScale(_scaleX, _scaleY), true);
+        _window->setProgress(true, update.Progress, 100);
+    }
 }

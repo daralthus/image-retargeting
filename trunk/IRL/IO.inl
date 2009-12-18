@@ -11,6 +11,14 @@ namespace IRL
     }
 
     template<class PixelType>
+    const Image<PixelType> LoadFromQImage(const QImage& path)
+    {
+        Image<PixelType> result;
+        Convert(result, LoadFromQImage<RGB8>(path));
+        return result;
+    }
+
+    template<class PixelType>
     const ImageWithMask<PixelType> LoadImageWithMask(const std::string& path)
     {
         ImageWithMask<PixelType> result;
@@ -24,6 +32,14 @@ namespace IRL
         Image<RGB8> result;
         Convert(result, image);
         return SaveImage(result, path);
+    }
+
+    template<class PixelType>
+    QImage SaveToQImage(const Image<PixelType>& image)
+    {
+        Image<RGB8> result;
+        Convert(result, image);
+        return SaveToQImage(result);
     }
 
     template<class PixelType>

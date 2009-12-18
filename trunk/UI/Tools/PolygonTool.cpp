@@ -104,6 +104,11 @@ void PolygonTool::reset()
 bool PolygonTool::mousePressEvent(QMouseEvent* e)
 {
     WorkingArea* view = mainWindow()->workingArea();
+    if (e->button() == Qt::RightButton)
+    {
+        abandonPolygon();
+        return true;
+    }
     if (e->button() != Qt::LeftButton || view->mainItem() == NULL)
         return false;
     if (_item == NULL)
