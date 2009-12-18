@@ -33,6 +33,7 @@ public:
 
 public slots:
     void open(const QImage& image);
+    void save(const QString& path);
     void zoom(const QPoint& center, double factor);
     void processPolygon(const QPolygonF& polygon);
 
