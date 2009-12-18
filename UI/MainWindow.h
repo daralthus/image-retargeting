@@ -19,6 +19,8 @@ public:
     Tool* selectedTool() const { return _currentTool; }
 
     void enqueueWorkItem(WorkItem* item);
+    void addToHistory(const QImage& state);
+    void clearHistroy();
 
 public slots:
     void open();
@@ -26,6 +28,8 @@ public slots:
     void selectTool(Tool* tool);
     void setBusy(bool busy);
     void setProgress(bool visible, int current, int total);
+    void back();
+    void forward();
 
 private:
     void setupWorkingArea();
@@ -40,6 +44,8 @@ private:
 
     QAction* _openAction;
     QAction* _saveAction;
+    QAction* _backAction;
+    QAction* _forwardAction;
 
     QList<Tool*> _tools;
     NullTool* _nullTool;
@@ -52,4 +58,6 @@ private:
 
     QLabel* _statusIndicator;
     QProgressBar* _progress;
+
+    QImage _savedInHistory;
 };

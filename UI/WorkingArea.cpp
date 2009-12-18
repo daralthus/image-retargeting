@@ -45,6 +45,8 @@ QGraphicsItem* WorkingArea::mainItem() const
 
 void WorkingArea::open(const QImage& image)
 {
+    _window->clearHistroy();
+
     _originalSize = image.size();
     double lnw = ceil(log((double)image.width()) / log(2.0));
     _powerOfTwoSize.setWidth(pow(2, lnw));
@@ -63,6 +65,19 @@ void WorkingArea::open(const QImage& image)
     _item->setTransform(QTransform::fromScale(_scaleX, _scaleY));
     _scene.setSceneRect(0, 0, _originalSize.width(), _originalSize.height());
     _scene.addItem(_item);
+}
+
+void WorkingArea::memorizeInHistory()
+{
+    _window->addToHistory(_workingCopy);
+}
+
+void WorkingArea::revertFromHistroy(const QImage& img)
+{
+    if (_workingCopy.size() != img.size())
+        return;
+    _workingCopy = img;
+    _item->setPixmap(QPixmap::fromImage(_workingCopy));
 }
 
 void WorkingArea::save(const QString& path)
@@ -122,6 +137,7 @@ void WorkingArea::processPolygon(const QPolygonF& polygon)
 
     _window->setBusy(true);
     _window->setProgress(true, 0, 100);
+    memorizeInHistory();
     _checker.start(50);
     _window->enqueueWorkItem(new ObjectRemovalWorkItem(this, _workingCopy, polygon, scaleX, scaleY));
 }

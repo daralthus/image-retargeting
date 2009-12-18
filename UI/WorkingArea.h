@@ -36,6 +36,8 @@ public slots:
     void save(const QString& path);
     void zoom(const QPoint& center, double factor);
     void processPolygon(const QPolygonF& polygon);
+    void memorizeInHistory();
+    void revertFromHistroy(const QImage& img);
 
 private slots:
     void checkUpdateQueue();
