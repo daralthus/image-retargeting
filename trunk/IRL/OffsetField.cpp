@@ -59,20 +59,13 @@ namespace IRL
                 if (mask(sx, sy).IsMasked())
                 {
                     int i = 0;
-                    int32_t nsx = sx;
-                    int32_t nsy = sy;
-                    int32_t r = 2;
+                    int32_t nsx;
+                    int32_t nsy;
                     do 
                     {
-                        nsx += random.Uniform<int32_t>(-r, r);
-                        nsy += random.Uniform<int32_t>(-r, r);
-                        if (nsx < left) nsx = left;
-                        if (nsx >= right) nsx = right - 1;
-                        if (nsy < top) nsy = top;
-                        if (nsy >= bottom) nsy = bottom - 1;
+                        nsx = random.Uniform<int>(left, right);
+                        nsy = random.Uniform<int>(top, bottom);
                         i++;
-                        if ((i % 2) == 0)
-                            r *= 2;
                     } while (mask(nsx, nsy).IsMasked() && i < iterations + 1);
                     field(x, y).x = (uint16_t)(nsx - x);
                     field(x, y).y = (uint16_t)(nsy - y);

@@ -39,7 +39,9 @@ namespace IRL
         static DistanceType DistanceUpperBound()
         {
             DistanceType maxValue = TypeTraits<Channel>::MaxValue();
-            return 3 * maxValue * maxValue + 1; 
+            return maxValue * maxValue * Multiplier<Channel>::L() * Multiplier<Channel>::L() +
+                   maxValue * maxValue * Multiplier<Channel>::a() * Multiplier<Channel>::a() +
+                   maxValue * maxValue * Multiplier<Channel>::b() * Multiplier<Channel>::b() + 1; 
         }
 
     private:

@@ -65,6 +65,15 @@ void WorkingArea::open(const QImage& image)
     _item->setTransform(QTransform::fromScale(_scaleX, _scaleY));
     _scene.setSceneRect(0, 0, _originalSize.width(), _originalSize.height());
     _scene.addItem(_item);
+
+    qreal viewportScaleX = qreal(width() - 40) / image.width();
+    qreal viewportScaleY = qreal(height() - 40) / image.height();
+    if (viewportScaleX < 1 || viewportScaleY < 1)
+    {
+        qreal viewportScale = viewportScaleX < viewportScaleY ? viewportScaleX : viewportScaleY;
+        setTransform(transform().scale(viewportScale, viewportScale));
+        centerOn(_item);
+    }
 }
 
 void WorkingArea::memorizeInHistory()

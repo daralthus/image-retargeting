@@ -39,7 +39,7 @@ void ObjectRemovalWorkItem::prepareMask(QImage& surface)
 
 void ObjectRemovalWorkItem::IntermediateResult(const IRL::Image<Color>& result, int progress, int total)
 {
-    if (clock() - _lastResultTime > 100 * CLOCKS_PER_SEC / 1000)
+    if (clock() - _lastResultTime > 50 * CLOCKS_PER_SEC / 1000)
     {
         pushUpdate(IRL::SaveToQImage(result), progress * 100 / total, false);
         _lastResultTime = clock();

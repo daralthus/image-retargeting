@@ -5,6 +5,8 @@
 #include "Tools/ZoomTool.h"
 #include "Tools/PolygonTool.h"
 
+#include "../IRL/Parameters.h"
+
 MainWindow::MainWindow() : _workerThread(NULL)
 {
     setupWorkingArea();
@@ -47,6 +49,12 @@ void MainWindow::setupActions()
     _forwardAction->setToolTip("Redo last operation");
     _forwardAction->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Z));
     connect(_forwardAction, SIGNAL(triggered()), this, SLOT(forward()));
+
+    _debugOutputAction = new QAction(tr("&Save intermediate images"), this);
+    _debugOutputAction->setToolTip("Save intermediate images into Out/ directory");
+    connect(_debugOutputAction, SIGNAL(triggered()), this, SLOT(toggleDebugOutput()));
+    _debugOutputAction->setCheckable(true);
+    _debugOutputAction->setChecked(IRL::DebugOutput);
 }
 
 void MainWindow::setupTools()
@@ -85,6 +93,9 @@ void MainWindow::setupMenu()
         if (action)
             toolsMenu->addAction(action);
     }
+
+    QMenu* optionsMenu = menuBar()->addMenu(tr("&Options"));
+    optionsMenu->addAction(_debugOutputAction);
 }
 
 void MainWindow::setupToolbar()
@@ -263,3 +274,9 @@ void MainWindow::forward()
 }
 
 //////////////////////////////////////////////////////////////////////////
+
+void MainWindow::toggleDebugOutput()
+{
+    IRL::DebugOutput = !IRL::DebugOutput;
+    _debugOutputAction->setChecked(IRL::DebugOutput);
+}

@@ -10,7 +10,7 @@
 #include "../IRL/Lab.h"
 #include "../IRL/ObjectRemoval.h"
 
-typedef IRL::RGB8 Color;
+typedef IRL::LabDouble Color;
 
 class ObjectRemovalWorkItem :
     public WorkItem,

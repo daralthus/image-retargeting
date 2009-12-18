@@ -30,6 +30,7 @@ public slots:
     void setProgress(bool visible, int current, int total);
     void back();
     void forward();
+    void toggleDebugOutput();
 
 private:
     void setupWorkingArea();
@@ -46,6 +47,7 @@ private:
     QAction* _saveAction;
     QAction* _backAction;
     QAction* _forwardAction;
+    QAction* _debugOutputAction;
 
     QList<Tool*> _tools;
     NullTool* _nullTool;

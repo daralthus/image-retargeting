@@ -1,8 +1,10 @@
 #include "BidirectionalSimilarity.h"
 #include "Profiler.h"
 #include "Parallel.h"
+#include "Parameters.h"
 
-//#define DEBUG_BIDIR
+#include <iostream>
+#include <fstream>
 
 namespace IRL
 {
@@ -161,9 +163,8 @@ namespace IRL
         for (int i = 0; i < NNFIterations; i++)
             s2t.Iteration(parallel);
         SourceToTarget = s2t.Field;
-#ifdef DEBUG_BIDIR
-        Completeness = s2t.GetMeasure();
-#endif
+        if (IRL::DebugOutput)
+            Completeness = s2t.GetMeasure();
     }
 
     template<class PixelType, bool UseSourceMask>
@@ -182,13 +183,20 @@ namespace IRL
             t2s.Field = MakeRandomField(t2s.Target, t2s.Source);
         if (UseSourceMask)
             t2s.Field = RemoveMaskedOffsets(t2s.Field, SourceMask);
+
+        {
+            std::ostringstream str;
+            str << _iteration;
+            std::string i = str.str();
+            SaveImage(t2s.Field, DebugPath + "/T2S/" + i + " before.png");
+        }
+
         for (int i = 0; i < NNFIterations; i++)
             t2s.Iteration(parallel);
         TargetToSource = t2s.Field;
 
-#ifdef DEBUG_BIDIR
-        Coherency = t2s.GetMeasure();
-#endif
+        if (IRL::DebugOutput)
+            Coherency = t2s.GetMeasure();
     }
 
     template<class PixelType, bool UseSourceMask>
@@ -201,9 +209,7 @@ namespace IRL
     template<class PixelType, bool UseSourceMask>
     void BidirectionalSimilarity<PixelType, UseSourceMask>::DebugOutput()
     {
-#ifdef DEBUG_BIDIR
         std::ostringstream str;
-        //str << _iteration << " (" << Completeness + Coherency << ")";
         str << _iteration;
         std::string i = str.str();
 
@@ -214,6 +220,14 @@ namespace IRL
             _mkdir((DebugPath + "/S2T").c_str());
             _mkdir((DebugPath + "/T2S").c_str());
 
+            std::string fileName = DebugPath + "/Target/" + i + " Func.txt";
+            std::ofstream f;
+            f.open(fileName.c_str());
+            f << "Completeness: " << Completeness << "\n";
+            f << "Coherency:    " << Coherency << "\n";
+            f << "Sum:          " << Completeness + Coherency << "\n";
+            f.close();
+
             SaveImage(Target, DebugPath + "/Target/" + i + ".png");
             SaveImage(SourceToTarget, DebugPath + "/S2T/" + i + ".png");
             SaveImage(TargetToSource, DebugPath + "/T2S/" + i + ".png");
@@ -221,6 +235,5 @@ namespace IRL
 
         std::cout << "Iteration " << _iteration << " Completness: " << Completeness
             << " + Coherency: " << Coherency << " = " << Completeness + Coherency << "\n";
-#endif
     }
 }
