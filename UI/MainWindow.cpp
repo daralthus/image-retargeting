@@ -110,6 +110,11 @@ void MainWindow::open()
 
 void MainWindow::save()
 {
+    QString fileName = QFileDialog::getSaveFileName(this,
+        tr("Save Image"), "", tr("Image Files (*.png *.jpg *.bmp)"));
+    if (fileName.isEmpty())
+        return;
+    _workingArea->save(fileName);
 }
 
 void MainWindow::selectTool(Tool* tool)

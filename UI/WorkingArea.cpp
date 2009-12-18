@@ -65,6 +65,13 @@ void WorkingArea::open(const QImage& image)
     _scene.addItem(_item);
 }
 
+void WorkingArea::save(const QString& path)
+{
+    if (_item == NULL)
+        return;
+    _workingCopy.scaled(_originalSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation).save(path);
+}
+
 Tool* WorkingArea::selectedTool() const 
 { 
     return _window->selectedTool();
