@@ -14,8 +14,10 @@ MainWindow::MainWindow() : _workerThread(NULL)
     setupToolbar();
     setupStatusBar();
 
-    resize(600, 400);
     clearHistroy();
+
+    setWindowTitle(tr("Object Removal"));
+    resize(600, 400);
 }
 
 void MainWindow::setupWorkingArea()
