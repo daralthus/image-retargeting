@@ -22,6 +22,9 @@ SOURCES += IRL/Parallel.cpp
 HEADERS += IRL/Point2D.h
 SOURCES += IRL/Point2D.cpp
 
+HEADERS += IRL/OffsetField.h
+SOURCES += IRL/OffsetField.cpp
+
 HEADERS += IRL/RGB.h IRL/Lab.h IRL/Alpha.h IRL/ColorConversion.h IRL/ColorConversion.inl
 
 HEADERS += IRL/Image.h IRL/ImageConversion.h IRL/ImageWithMask.h IRL/Image.inl IRL/ImageConversion.inl IRL/ImageWithMask.inl
@@ -30,6 +33,7 @@ HEADERS += IRL/GaussianPyramid.h IRL/GaussianPyramid.inl
 
 HEADERS += IRL/NearestNeighborField.h IRL/NearestNeighborField.inl
 HEADERS += IRL/BidirectionalSimilarity.h IRL/BidirectionalSimilarity.inl
+HEADERS += IRL/ObjectRemoval.h IRL/ObjectRemoval.inl
 
 HEADERS += UI/MainWindow.h
 SOURCES += UI/MainWindow.cpp
@@ -48,3 +52,8 @@ SOURCES += UI/Tools/ZoomTool.cpp
 
 HEADERS += UI/Tools/PolygonTool.h
 SOURCES += UI/Tools/PolygonTool.cpp
+
+HEADERS += UI/WorkItem.h
+
+HEADERS += UI/ObjectRemoval.h
+SOURCES += UI/ObjectRemoval.cpp

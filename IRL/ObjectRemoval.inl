@@ -5,7 +5,7 @@
 namespace IRL
 {
     template<class PixelType>
-    const Image<PixelType> RemoveObject(const ImageWithMask<PixelType>& img)
+    const Image<PixelType> RemoveObject(const ImageWithMask<PixelType>& img, OperationCallback<PixelType>* callback)
     {
         const int Levels = int(log((float)Minimum<int>(img.Image.Width(), img.Image.Height())));
 
@@ -15,14 +15,13 @@ namespace IRL
 
         BidirectionalSimilarity<PixelType, true> solver;
 
+        int total = 2 * Levels + Levels * (Levels - 1) / 2;
+        int progress = 0;
+
         // coarse to fine iteration
         for (int i = Levels - 1; i >= 0; i--)
         {
-            std::stringstream debugPath;
-            debugPath << "Out/" << i;
-
             solver.Reset();
-            //solver.DebugPath = debugPath.str();
             solver.Source = source.Levels[i];
             solver.SourceMask = mask.Levels[i];
             solver.NNFIterations = 4 + i * 2;
@@ -38,21 +37,17 @@ namespace IRL
                 solver.SourceToTarget = MakeRandomField(solver.Source, solver.Target);
                 solver.TargetToSource = MakeRandomField(solver.Target, solver.Source);
             }
-
-            _mkdir(debugPath.str().c_str());
-            // SaveImage(solver.Source, debugPath.str() + "/Source.png");
-
-            //ImageWithMask<PixelType> target;
-            //target.Image = solver.Target;
-            //target.Mask  = solver.SourceMask;
-            //SaveImage(target, debugPath.str() + "/Target.png");
-
             for (int j = 0; j < 2 + i; j++)
+            {
                 solver.Iteration(true);
 
-            //SaveImage(solver.Target, debugPath.str() + "/Result.png");
+                progress++;
+                if (!(i == 0 && j == 1 + i) && callback)
+                    callback->IntermediateResult(solver.Target, progress, total);
+            }
         }
 
+        if (callback) callback->OperationEnded(solver.Target);
         return solver.Target; // final image
     }
 }
