@@ -13,7 +13,9 @@ MainWindow::MainWindow() : _workerThread(NULL)
     setupMenu();
     setupToolbar();
     setupStatusBar();
+
     resize(600, 400);
+    clearHistroy();
 }
 
 void MainWindow::setupWorkingArea()
@@ -31,6 +33,14 @@ void MainWindow::setupActions()
     _saveAction = new QAction(QIcon(":/images/save.png"), tr("&Save as..."), this);
     _saveAction->setToolTip("Save current image");
     connect(_saveAction, SIGNAL(triggered()), this, SLOT(save()));
+
+    _backAction = new QAction(QIcon(":/images/back.png"), tr("&Back"), this);
+    _backAction->setToolTip("Revert last operation");
+    connect(_backAction, SIGNAL(triggered()), this, SLOT(back()));
+
+    _forwardAction = new QAction(QIcon(":/images/forward.png"), tr("&Forward"), this);
+    _forwardAction->setToolTip("Redo last operation");
+    connect(_forwardAction, SIGNAL(triggered()), this, SLOT(forward()));
 }
 
 void MainWindow::setupTools()
@@ -51,6 +61,10 @@ void MainWindow::setupMenu()
     fileMenu->addAction(_saveAction);
     fileMenu->addSeparator();
     fileMenu->addAction(tr("&Exit"), this, SLOT(close()));
+
+    QMenu* editMenu = menuBar()->addMenu(tr("&Edit"));
+    editMenu->addAction(_backAction);
+    editMenu->addAction(_forwardAction);
 
     QMenu* toolsMenu = menuBar()->addMenu(tr("&Tools"));
     int lastCategory = -1;
@@ -207,3 +221,39 @@ void MainWindow::enqueueWorkItem(WorkItem* item)
         _workerThread->start();
     }
 }
+
+//////////////////////////////////////////////////////////////////////////
+
+void MainWindow::addToHistory(const QImage& state)
+{
+    _backAction->setEnabled(true);
+    _forwardAction->setEnabled(false);
+    _savedInHistory = state;
+}
+
+void MainWindow::clearHistroy()
+{
+    _savedInHistory = QImage();
+    _backAction->setEnabled(false);
+    _forwardAction->setEnabled(false);
+}
+
+void MainWindow::back()
+{
+    QImage history = _savedInHistory;
+    _workingArea->memorizeInHistory();
+    _workingArea->revertFromHistroy(history);
+    _backAction->setEnabled(false);
+    _forwardAction->setEnabled(true);
+}
+
+void MainWindow::forward()
+{
+    QImage history = _savedInHistory;
+    _workingArea->memorizeInHistory();
+    _workingArea->revertFromHistroy(history);
+    _backAction->setEnabled(true);
+    _forwardAction->setEnabled(false);
+}
+
+//////////////////////////////////////////////////////////////////////////
