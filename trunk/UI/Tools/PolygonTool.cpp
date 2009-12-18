@@ -8,8 +8,7 @@ class PolygonItem :
 {
 public:
     PolygonItem()
-    { 
-    }
+    { }
 
     void setPoints(const QPolygonF& points) { _points = points; }
     const QPolygonF& points() const { return _points; }
@@ -50,6 +49,7 @@ PolygonTool::PolygonTool(MainWindow* window) : Tool(window)
 {
     _item = NULL;
     initialize("Polygon", QIcon(":/images/polygon.png"), QCursor(Qt::CrossCursor));
+    action()->setShortcut(QKeySequence(Qt::Key_P));
     setCategory(1);
 }
 

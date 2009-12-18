@@ -28,18 +28,22 @@ void MainWindow::setupActions()
 {
     _openAction = new QAction(QIcon(":/images/open.png"), tr("&Open..."), this);
     _openAction->setToolTip("Open image file");
+    _openAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_O));
     connect(_openAction, SIGNAL(triggered()), this, SLOT(open()));
 
     _saveAction = new QAction(QIcon(":/images/save.png"), tr("&Save as..."), this);
     _saveAction->setToolTip("Save current image");
+    _saveAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_S));
     connect(_saveAction, SIGNAL(triggered()), this, SLOT(save()));
 
     _backAction = new QAction(QIcon(":/images/back.png"), tr("&Back"), this);
     _backAction->setToolTip("Revert last operation");
+    _backAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Z));
     connect(_backAction, SIGNAL(triggered()), this, SLOT(back()));
 
     _forwardAction = new QAction(QIcon(":/images/forward.png"), tr("&Forward"), this);
     _forwardAction->setToolTip("Redo last operation");
+    _forwardAction->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Z));
     connect(_forwardAction, SIGNAL(triggered()), this, SLOT(forward()));
 }
 

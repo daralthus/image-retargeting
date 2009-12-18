@@ -7,6 +7,7 @@
 DragTool::DragTool(MainWindow* window) : Tool(window)
 {
     initialize("Drag", QIcon(":/images/drag.png"), QCursor(Qt::ArrowCursor));
+    action()->setShortcut(QKeySequence(Qt::Key_Space));
 }
 
 void DragTool::selected()

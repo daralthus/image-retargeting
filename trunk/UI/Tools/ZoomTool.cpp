@@ -7,9 +7,14 @@ ZoomTool::ZoomTool(MainWindow* window, ZoomType type) : Tool(window)
 {
     _type = type;
     if (type == ZoomIn)
+    {
         initialize("Zoom In", QIcon(":/images/zoom-in.png"), QCursor(QPixmap(":/images/zoom-in-cursor.png")));
-    else
+        action()->setShortcut(QKeySequence(Qt::Key_Z));
+    } else
+    {
         initialize("Zoom Out", QIcon(":/images/zoom-out.png"), QCursor(QPixmap(":/images/zoom-out-cursor.png")));
+        action()->setShortcut(QKeySequence(Qt::SHIFT + Qt::Key_Z));
+    }
 }
 
 bool ZoomTool::mousePressEvent(QMouseEvent* e)
